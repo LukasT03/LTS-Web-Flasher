@@ -1,11 +1,286 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>LTS Flash</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LTS Web Flasher</title>
+
+  <style>
+    :root {
+      --bg: 245 245 245;
+      --text: 17 17 17;
+      --accent: #0E7AFE;
+      --accent-dark: #1364C4;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: 40 40 42;
+        --text: 234 234 234;
+      }
+    }
+
+    body {
+      margin: 0;
+      background: rgb(var(--bg));
+      color: rgb(var(--text));
+      font-family: system-ui, -apple-system, Helvetica, Arial, sans-serif;
+      padding: 1.5rem;
+      line-height: 1.45;
+      max-width: 640px;
+      margin-inline: auto;
+    }
+
+    h1 {
+      margin-top: 0.2rem;
+      font-size: 1.8rem;
+    }
+
+    .hidden { display: none !important; }
+
+    .flasher-card {
+      background: rgb(var(--bg));
+      border-radius: 24px;
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      margin-top: 1.2rem;
+    }
+
+    ol {
+      list-style: none;
+      padding-left: 0;
+      counter-reset: step;
+    }
+    ol li {
+      counter-increment: step;
+      margin: 0.35rem 0;
+      padding-left: 2.1rem;
+      position: relative;
+    }
+    ol li::before {
+      content: counter(step);
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+      width: 1.55rem;
+      height: 1.55rem;
+      border-radius: 50%;
+      background: var(--accent-dark);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lts-btn {
+      padding: 0.9rem 1.5rem;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      width: 100%;
+      cursor: pointer;
+      text-align: center;
+    }
+    .lts-btn:disabled {
+      background: var(--accent-dark);
+      opacity: 0.6;
+    }
+
+    .note {
+      color: #ff8c28;
+      font-size: 0.95rem;
+      margin-top: 0.4rem;
+      text-align: center;
+    }
+
+    /* Segmented control */
+    .segmented {
+      display: flex;
+      gap: 0.5rem;
+      background: rgba(0,0,0,0.07);
+      padding: 0.25rem;
+      border-radius: 14px;
+      margin-top: 1rem;
+      position: relative;
+    }
+    @media (prefers-color-scheme: dark) {
+      .segmented { background: rgba(255,255,255,0.12); }
+    }
+
+    .seg-indicator {
+      position: absolute;
+      top: 0.25rem;
+      height: calc(100% - 0.5rem);
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      width: 0;
+      transform: translateX(0);
+      transition: transform 0.25s ease, width 0.25s ease;
+      pointer-events: none;
+    }
+    @media (prefers-color-scheme: dark) {
+      .seg-indicator { background: rgba(255,255,255,0.15); }
+    }
+
+    .seg-btn {
+      flex: 1 1 0;
+      padding: 0.5rem 0.7rem;
+      border: none;
+      background: none;
+      font-size: 1rem;
+      cursor: pointer;
+      color: rgb(var(--text));
+    }
+
+    @media (max-width: 900px) {
+      .segmented { display:none; }
+      #fwVersion { display:none; }
+    }
+  </style>
 </head>
 <body>
+
   <h1>LTS ESP32 Web Flasher</h1>
-  <p>Hallo von flash.lts-design.com 👋</p>
+
+  <div class="flasher-card">
+
+    <ol>
+      <li>Connect your LTS Respooler to your computer</li>
+      <li>Select your board model below</li>
+      <li>Click “Flash Firmware”</li>
+    </ol>
+
+    <div id="fwVersion" style="margin-top:1rem;font-weight:700;">
+      Firmware Version: <span id="fwVersionValue">—</span>
+    </div>
+
+    <div id="boardSegment" class="segmented">
+      <div class="seg-indicator"></div>
+      <button class="seg-btn is-selected" data-value="dev">ESP32</button>
+      <button class="seg-btn" data-value="v4">Control Board</button>
+    </div>
+
+    <div style="margin-top:1.2rem;">
+      <esp-web-install-button id="installBtn" class="hidden">
+        <button slot="activate" type="button" class="lts-btn">Flash Firmware</button>
+      </esp-web-install-button>
+
+      <div id="wbUnsupported" class="note hidden">
+        WebSerial is not supported in this browser.<br>
+        Please use Chrome or Edge on desktop.
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const installBtnEl = document.getElementById("installBtn");
+    const unsupportedEl = document.getElementById("wbUnsupported");
+
+    const supportsWebSerial =
+      typeof navigator !== "undefined" && "serial" in navigator;
+
+    if (supportsWebSerial) {
+      installBtnEl.classList.remove("hidden");
+    } else {
+      unsupportedEl.classList.remove("hidden");
+    }
+
+    // Load ESP Web Tools
+    (async () => {
+      try {
+        await import("https://unpkg.com/esp-web-tools@9.4.0/dist/web/install-button.js?module");
+      } catch (e) {}
+    })();
+
+    // Firmware URLs & chip families
+    const BIN_URLS = {
+      dev: "https://download.lts-design.com/Firmware/ESP32-WROOM-32_latest.bin",
+      v4:  "https://download.lts-design.com/Firmware/ControlBoard_V4_latest.bin"
+    };
+
+    const CHIP_FAMILY = {
+      dev: "ESP32",
+      v4:  "ESP32-S3"
+    };
+
+    let selectedValue = "dev";
+    let currentBlobUrl = null;
+
+    const seg = document.getElementById("boardSegment");
+    const segButtons = Array.from(seg.querySelectorAll("button[data-value]"));
+    const segInd = seg.querySelector(".seg-indicator");
+
+    function positionIndicator() {
+      const btn = segButtons.find(b => b.dataset.value === selectedValue);
+      if (!btn) return;
+      const contRect = seg.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      segInd.style.width = `${btnRect.width}px`;
+      segInd.style.transform = `translateX(${btnRect.left - contRect.left}px)`;
+    }
+
+    function createManifestBlob(val) {
+      const manifest = {
+        name: val === "dev" ? "ESP32 (Driver Board)" : "Control Board V4",
+        version: "latest",
+        builds: [
+          {
+            chipFamily: CHIP_FAMILY[val],
+            parts: [{ path: BIN_URLS[val], offset: 0 }]
+          }
+        ]
+      };
+      return URL.createObjectURL(
+        new Blob([JSON.stringify(manifest)], { type: "application/json" })
+      );
+    }
+
+    function updateManifest() {
+      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = createManifestBlob(selectedValue);
+      installBtnEl.setAttribute("manifest", currentBlobUrl);
+    }
+
+    segButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const val = btn.dataset.value;
+        if (val !== selectedValue) {
+          selectedValue = val;
+          segButtons.forEach(b =>
+            b.classList.toggle("is-selected", b === btn)
+          );
+          updateManifest();
+          positionIndicator();
+        }
+      });
+    });
+
+    updateManifest();
+    positionIndicator();
+    window.addEventListener("resize", positionIndicator);
+
+    // Load firmware version
+    async function loadFirmwareVersion() {
+      const el = document.getElementById("fwVersionValue");
+      try {
+        const res = await fetch(
+          "https://download.lts-design.com/Firmware/latest_board_firmware.txt",
+          { cache: "no-store" }
+        );
+        const txt = (await res.text()).trim().split(/\s+/)[0];
+        el.textContent = txt;
+      } catch {
+        el.textContent = "—";
+      }
+    }
+    loadFirmwareVersion();
+  </script>
+
 </body>
 </html>
