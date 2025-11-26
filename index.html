@@ -25,9 +25,9 @@
       margin: 0;
       background: rgb(var(--bg));
       color: rgb(var(--text));
-      font-family: system-ui, -apple-system, Helvetica, Arial, sans-serif;
-      padding: 1.5rem;
-      line-height: 1.45;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      padding: 0.77rem 1rem 1rem;
+      line-height: 1.5;
       max-width: 640px;
       margin-inline: auto;
     }
@@ -41,54 +41,59 @@
 
     .flasher-card {
       background: #ffffff;
-      border-radius: 24px;
-      padding: 1.25rem;
-      
-      margin-top: 1.2rem;
+      border-radius: 26px;
+      padding: 1rem;
+      margin-top: 0.9rem;
     }
 
     ol {
       list-style: none;
-      padding-left: 0;
       counter-reset: step;
+      padding-left: 0;
+      margin: 0 0 1rem 0;
+      list-style-position: inside;
+      color: rgb(var(--text));
     }
     ol li {
       counter-increment: step;
-      margin: 0.35rem 0;
-      padding-left: 2.1rem;
       position: relative;
+      margin: 0.1rem 0;
+      padding-left: 2.1rem;
     }
     ol li::before {
       content: counter(step);
       position: absolute;
-      top: 50%;
       left: 0;
+      top: 50%;
       transform: translateY(-50%);
       width: 1.55rem;
       height: 1.55rem;
       border-radius: 50%;
-      background: var(--accent-dark);
+      background-color: #1364C4;
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding-left: 0.5px;
     }
 
     .lts-btn {
-      padding: 0.9rem 1.5rem;
+      padding: 0.85rem 1.5rem;
       border-radius: 14px;
-      background: var(--accent);
-      color: #fff;
+      background-color: #0E7AFE;
+      color: #fff !important;
       border: none;
       font-size: 1rem;
       font-weight: 600;
       width: 100%;
       cursor: pointer;
       text-align: center;
+      display: block;
     }
     .lts-btn:disabled {
-      background: var(--accent-dark);
+      background-color: #1364C4;
       opacity: 0.6;
+      cursor: not-allowed;
     }
 
     .note {
@@ -102,45 +107,57 @@
     .segmented {
       display: flex;
       gap: 0.5rem;
-      background: rgba(0,0,0,0.07);
+      background: #e5e7eb;
       padding: 0.25rem;
       border-radius: 14px;
-      margin-top: 1rem;
+      width: 100%;
       position: relative;
+      overflow: hidden;
+      margin-top: 0.9rem;
+      margin-bottom: 1.1rem;
     }
     @media (prefers-color-scheme: dark) {
-      .segmented { background: rgba(255,255,255,0.12); }
+      .segmented { background: rgba(255,255,255,0.08); }
     }
 
     .seg-indicator {
       position: absolute;
       top: 0.25rem;
+      left: 0;
       height: calc(100% - 0.5rem);
-      background: #fff;
+      width: 0;
+      background: #ffffff;
       border-radius: 10px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-      width: 0;
       transform: translateX(0);
       transition: transform 0.25s ease, width 0.25s ease;
       pointer-events: none;
+      will-change: transform, width;
     }
     @media (prefers-color-scheme: dark) {
-      .seg-indicator { background: rgba(255,255,255,0.15); }
+      .seg-indicator { background: rgba(255,255,255,0.14); }
     }
 
     .seg-btn {
       flex: 1 1 0;
-      padding: 0.5rem 0.7rem;
+      padding: 0.1rem 0.9rem;
       border: none;
-      background: none;
+      background: transparent;
       font-size: 1rem;
+      font-weight: 400;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
       color: rgb(var(--text));
+      transition: background 0.25s ease, box-shadow 0.25s ease;
     }
 
-    @media (max-width: 900px) {
-      .segmented { display:none; }
-      #fwVersion { display:none; }
+    @media (max-width: 999px) {
+      .segmented { display: none !important; }
+      #fwVersion { display: none !important; }
     }
   </style>
 </head>
