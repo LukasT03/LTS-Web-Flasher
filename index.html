@@ -196,7 +196,8 @@
   </style>
 </head>
 <body>
-  <div id="pageFadeOverlay" style="position:fixed; inset:0; background:rgb(var(--bg)); z-index:9999; opacity:1; transition:opacity 0.5s ease-out;"></div>
+  <div id="pageRoot" style="position:relative;">
+    <div id="pageFadeOverlay" style="position:absolute; inset:0; background:rgb(var(--bg)); z-index:9999; opacity:1; transition:opacity 0.5s ease-out;"></div>
 
   <div style="width:100%; text-align:center; margin-bottom:0.8rem;">
     <img src="Logo.png" alt="LTS Logo" style="height:140px; width:auto;" />
@@ -384,13 +385,13 @@
     loadFirmwareVersion();
   </script>
 
-</div>
   <div style="text-align:center; margin-top:2rem; margin-bottom:2rem; font-size:1rem; color:rgb(var(--text));">
     Powered by <a href="https://esphome.github.io/esp-web-tools/" target="_blank" style="color:rgb(var(--text)); text-decoration:underline;">ESP Web Tools</a>
     <div style="margin-top:0.6rem;">
       <a href="https://github.com/LukasT03" target="_blank" style="color:rgb(var(--text)); text-decoration:underline; margin-right:1rem;">GitHub</a>
       <a href="https://lts-design.com" target="_blank" style="color:rgb(var(--text)); text-decoration:underline;">lts-design.com</a>
     </div>
+  </div>
   </div>
 </body>
 </html>
