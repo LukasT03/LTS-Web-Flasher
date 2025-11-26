@@ -30,11 +30,21 @@
       line-height: 1.0;
       max-width: 580px;
       margin-inline: auto;
+      padding-top: 50px;
+      padding-bottom: 10vh;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    button {
+      -webkit-tap-highlight-color: transparent;
     }
 
     h1 {
-      margin-top: 30%;
+      margin-top: 0.2rem;
       font-size: 1.8rem;
+      text-align: center;
     }
 
     .hidden { display: none !important; }
@@ -43,7 +53,7 @@
       background: #ffffff;
       border-radius: 26px;
       padding: 1rem;
-      margin-top: 0.9rem;
+      margin-top: 2rem;
     }
 
     ol {
@@ -57,7 +67,7 @@
     ol li {
       counter-increment: step;
       position: relative;
-      margin: 0 0 1.3rem 0;
+      margin: 0 0 1rem 0;
       padding-left: 2.1rem;
       padding-top: 0.28rem;
     }
@@ -159,12 +169,19 @@
         font-weight: 600;
       }
     }
+    .seg-btn:focus,
+    .lts-btn:focus {
+      outline: none;
+    }
 
   </style>
 </head>
 <body>
 
-  <h1 id="pageTitle">LTS ESP32 Web Flasher</h1>
+  <div style="width:100%; text-align:center; margin-top:.2rem; margin-bottom:1.5rem;">
+    <img src="Logo.png" alt="LTS Logo" style="height:140px; width:auto;" />
+  </div>
+  <h1 id="pageTitle">LTS Web Flasher</h1>
 
   <div class="flasher-card">
 
@@ -175,7 +192,7 @@
     </ol>
 
     <div id="fwVersion" style="margin-top:1rem;font-weight:700;">
-      <span id="fwLabel">Firmware Version:</span> <span id="fwVersionValue">—</span>
+      <span id="fwLabel">Current version:</span> <span id="fwVersionValue">0.0.0</span>
     </div>
 
     <div id="boardSegment" class="segmented">
@@ -206,17 +223,17 @@
 
     function applyGermanTexts() {
       const titleEl = document.getElementById("pageTitle");
-      if (titleEl) titleEl.textContent = "LTS ESP32 Web Flasher";
+      if (titleEl) titleEl.textContent = "Web Flasher";
 
       const step1El = document.getElementById("step1");
       const step2El = document.getElementById("step2");
       const step3El = document.getElementById("step3");
-      if (step1El) step1El.textContent = "Verbinde deinen LTS Respooler mit deinem Computer.";
-      if (step2El) step2El.textContent = "Wähle unten dein Board-Modell aus.";
-      if (step3El) step3El.textContent = "Klicke auf „Firmware flashen“.";
+      if (step1El) step1El.textContent = "Schließe dein Board per USB an deinen Computer an";
+      if (step2El) step2El.textContent = "Wähle die korrekte Board-Version im Menü aus";
+      if (step3El) step3El.textContent = "Drücke den Flash-Button und wähle den korrekten COM-Port aus";
 
       const fwLabelEl = document.getElementById("fwLabel");
-      if (fwLabelEl) fwLabelEl.textContent = "Firmware-Version:";
+      if (fwLabelEl) fwLabelEl.textContent = "Aktuelle Version:";
 
       const flashBtnEl = document.getElementById("flashBtn");
       if (flashBtnEl) flashBtnEl.textContent = "Firmware flashen";
@@ -326,7 +343,7 @@
         const txt = (await res.text()).trim().split(/\s+/)[0];
         el.textContent = txt;
       } catch {
-        el.textContent = "—";
+        el.textContent = "0.0.0";
       }
     }
     loadFirmwareVersion();
