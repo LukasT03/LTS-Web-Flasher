@@ -53,18 +53,11 @@
       border-radius: 30px;
       padding: 1rem;
       margin-top: 1rem;
-      border: 1px solid #d1d5db;
     }
 
     @media (prefers-color-scheme: dark) {
       .flasher-card {
         background: rgb(28,28,30);
-        border: 1px solid rgba(255,255,255,0.12);
-      }
-    }
-    @media (prefers-color-scheme: dark) {
-      hr {
-        border-top:1px solid rgba(255,255,255,0.12) !important;
       }
     }
 
@@ -211,7 +204,7 @@
       <li id="step2">Select your board model below</li>
       <li id="step3">Click “Flash Firmware”</li>
     </ol>
-    <hr style="border:0; border-top:1px solid #d1d5db; margin:14px -1rem; width:calc(100% + 2rem);">
+    <hr style="border:0; border-top:1px solid #d1d5db;">
 
     <div id="fwVersion" style="margin-top:1rem;font-weight:700; font-size:1.1rem;">
       <span id="fwLabel">Current version:</span> <span id="fwVersionValue">0.0.0</span>
