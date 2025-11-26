@@ -16,7 +16,7 @@
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: 40 40 42;
+        --bg: 15 17 21;
         --text: 234 234 234;
       }
     }
@@ -30,7 +30,7 @@
       line-height: 1.0;
       max-width: 580px;
       margin-inline: auto;
-      padding-top: 10vh;
+      padding-top: 8vh;
       min-height: 10vh;
       display: flex;
       flex-direction: column;
@@ -53,6 +53,12 @@
       border-radius: 26px;
       padding: 1rem;
       margin-top: 1rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .flasher-card {
+        background: rgb(28,28,30);
+      }
     }
 
     ol {
@@ -123,6 +129,12 @@
       position: relative;
       overflow: hidden;
       margin-top: 1rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .segmented {
+        background: rgba(255,255,255,0.08);
+      }
     }
 
     .seg-indicator {
