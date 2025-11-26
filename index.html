@@ -348,7 +348,6 @@
       });
     });
 
-    updateManifest();
 
     // Load firmware version
     async function loadFirmwareVersion() {
@@ -361,8 +360,11 @@
         const txt = (await res.text()).trim().split(/\s+/)[0];
         latestVersion = txt;
         el.textContent = txt;
+        updateManifest();
       } catch {
         el.textContent = "0.0.0";
+        latestVersion = "0.0.0";
+        updateManifest();
       }
     }
     loadFirmwareVersion();
