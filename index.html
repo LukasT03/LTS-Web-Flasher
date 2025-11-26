@@ -26,14 +26,14 @@
       background: rgb(var(--bg));
       color: rgb(var(--text));
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      padding: 0.77rem 1rem 1rem;
-      line-height: 1.5;
-      max-width: 640px;
+      padding: 1rem;
+      line-height: 1.0;
+      max-width: 580px;
       margin-inline: auto;
     }
 
     h1 {
-      margin-top: 0.2rem;
+      margin-top: 30%;
       font-size: 1.8rem;
     }
 
@@ -50,22 +50,22 @@
       list-style: none;
       counter-reset: step;
       padding-left: 0;
-      margin: 0 0 1rem 0;
+      margin: 0 0 1.15rem 0;
       list-style-position: inside;
       color: rgb(var(--text));
     }
     ol li {
       counter-increment: step;
       position: relative;
-      margin: 0.1rem 0;
+      margin: 0 0 1.3rem 0;
       padding-left: 2.1rem;
+      padding-top: 0.28rem;
     }
     ol li::before {
       content: counter(step);
       position: absolute;
       left: 0;
-      top: 50%;
-      transform: translateY(-50%);
+      top: 0;
       width: 1.55rem;
       height: 1.55rem;
       border-radius: 50%;
@@ -106,41 +106,38 @@
     /* Segmented control */
     .segmented {
       display: flex;
-      gap: 0.5rem;
+      padding: 0.2rem;
       background: #e5e7eb;
-      padding: 0.25rem;
       border-radius: 14px;
       width: 100%;
+      box-sizing: border-box;
       position: relative;
       overflow: hidden;
-      margin-top: 0.9rem;
-      margin-bottom: 1.1rem;
-    }
-    @media (prefers-color-scheme: dark) {
-      .segmented { background: rgba(255,255,255,0.08); }
+      margin-top: 1rem;
     }
 
     .seg-indicator {
       position: absolute;
       top: 0.25rem;
-      left: 0;
+      left: 0.25rem;
       height: calc(100% - 0.5rem);
-      width: 0;
+      width: calc(50% - 0.25rem);
       background: #ffffff;
       border-radius: 10px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-      transform: translateX(0);
-      transition: transform 0.25s ease, width 0.25s ease;
+      transform: translateX(0%);
+      transition: transform 0.25s ease;
       pointer-events: none;
-      will-change: transform, width;
     }
     @media (prefers-color-scheme: dark) {
-      .seg-indicator { background: rgba(255,255,255,0.14); }
+      .seg-indicator {
+        background: rgba(255,255,255,0.14);
+      }
     }
 
     .seg-btn {
       flex: 1 1 0;
-      padding: 0.1rem 0.9rem;
+      padding: 0.4rem 0.9rem;
       border: none;
       background: transparent;
       font-size: 1rem;
@@ -154,27 +151,31 @@
       color: rgb(var(--text));
       transition: background 0.25s ease, box-shadow 0.25s ease;
     }
-
-    @media (max-width: 999px) {
-      .segmented { display: none !important; }
-      #fwVersion { display: none !important; }
+    .seg-btn.is-selected {
+      font-weight: 600;
     }
+    @media (prefers-color-scheme: dark) {
+      .seg-btn.is-selected {
+        font-weight: 600;
+      }
+    }
+
   </style>
 </head>
 <body>
 
-  <h1>LTS ESP32 Web Flasher</h1>
+  <h1 id="pageTitle">LTS ESP32 Web Flasher</h1>
 
   <div class="flasher-card">
 
     <ol>
-      <li>Connect your LTS Respooler to your computer</li>
-      <li>Select your board model below</li>
-      <li>Click “Flash Firmware”</li>
+      <li id="step1">Connect your LTS Respooler to your computer</li>
+      <li id="step2">Select your board model below</li>
+      <li id="step3">Click “Flash Firmware”</li>
     </ol>
 
     <div id="fwVersion" style="margin-top:1rem;font-weight:700;">
-      Firmware Version: <span id="fwVersionValue">—</span>
+      <span id="fwLabel">Firmware Version:</span> <span id="fwVersionValue">—</span>
     </div>
 
     <div id="boardSegment" class="segmented">
@@ -185,7 +186,7 @@
 
     <div style="margin-top:1.2rem;">
       <esp-web-install-button id="installBtn" class="hidden">
-        <button slot="activate" type="button" class="lts-btn">Flash Firmware</button>
+        <button slot="activate" type="button" class="lts-btn" id="flashBtn">Flash Firmware</button>
       </esp-web-install-button>
 
       <div id="wbUnsupported" class="note hidden">
@@ -197,6 +198,40 @@
   </div>
 
   <script>
+    const userLang = navigator.language || navigator.userLanguage || "";
+    const langCandidates = (navigator.languages && navigator.languages.length)
+      ? navigator.languages
+      : [userLang];
+    const isGermanRegion = langCandidates.some(l => /^de-(DE|AT)$/i.test(l));
+
+    function applyGermanTexts() {
+      const titleEl = document.getElementById("pageTitle");
+      if (titleEl) titleEl.textContent = "LTS ESP32 Web Flasher";
+
+      const step1El = document.getElementById("step1");
+      const step2El = document.getElementById("step2");
+      const step3El = document.getElementById("step3");
+      if (step1El) step1El.textContent = "Verbinde deinen LTS Respooler mit deinem Computer.";
+      if (step2El) step2El.textContent = "Wähle unten dein Board-Modell aus.";
+      if (step3El) step3El.textContent = "Klicke auf „Firmware flashen“.";
+
+      const fwLabelEl = document.getElementById("fwLabel");
+      if (fwLabelEl) fwLabelEl.textContent = "Firmware-Version:";
+
+      const flashBtnEl = document.getElementById("flashBtn");
+      if (flashBtnEl) flashBtnEl.textContent = "Firmware flashen";
+
+      const unsupportedEl = document.getElementById("wbUnsupported");
+      if (unsupportedEl) {
+        unsupportedEl.innerHTML =
+          "WebSerial wird in diesem Browser nicht unterstützt.<br>Bitte verwende Chrome oder Edge auf einem Desktop-Computer.";
+      }
+    }
+
+    if (isGermanRegion) {
+      applyGermanTexts();
+    }
+
     const installBtnEl = document.getElementById("installBtn");
     const unsupportedEl = document.getElementById("wbUnsupported");
 
@@ -231,17 +266,8 @@
     let currentBlobUrl = null;
 
     const seg = document.getElementById("boardSegment");
+    const segIndicator = seg.querySelector(".seg-indicator");
     const segButtons = Array.from(seg.querySelectorAll("button[data-value]"));
-    const segInd = seg.querySelector(".seg-indicator");
-
-    function positionIndicator() {
-      const btn = segButtons.find(b => b.dataset.value === selectedValue);
-      if (!btn) return;
-      const contRect = seg.getBoundingClientRect();
-      const btnRect = btn.getBoundingClientRect();
-      segInd.style.width = `${btnRect.width}px`;
-      segInd.style.transform = `translateX(${btnRect.left - contRect.left}px)`;
-    }
 
     function createManifestBlob(val) {
       const manifest = {
@@ -259,10 +285,19 @@
       );
     }
 
+    function updateIndicator() {
+      if (!segIndicator) return;
+      // two segments: dev (index 0), v4 (index 1)
+      const index = selectedValue === "dev" ? 0 : 1;
+      const translate = index * 100;
+      segIndicator.style.transform = `translateX(${translate}%)`;
+    }
+
     function updateManifest() {
       if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
       currentBlobUrl = createManifestBlob(selectedValue);
       installBtnEl.setAttribute("manifest", currentBlobUrl);
+      updateIndicator();
     }
 
     segButtons.forEach(btn => {
@@ -274,14 +309,11 @@
             b.classList.toggle("is-selected", b === btn)
           );
           updateManifest();
-          positionIndicator();
         }
       });
     });
 
     updateManifest();
-    positionIndicator();
-    window.addEventListener("resize", positionIndicator);
 
     // Load firmware version
     async function loadFirmwareVersion() {
