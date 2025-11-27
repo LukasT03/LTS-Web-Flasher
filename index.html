@@ -190,7 +190,7 @@
 </head>
 <body>
   <div id="pageRoot" style="position:relative;">
-    <div id="pageFadeOverlay" style="position:absolute; inset:0; background:rgb(var(--bg)); z-index:9999; opacity:1; transition:opacity 0.5s ease-out;"></div>
+    <div id="pageFadeOverlay" style="position:absolute; inset:0; background:rgb(var(--bg)); z-index:9999; opacity:1; transition:opacity 0.65s ease-out;"></div>
 
   <div style="width:100%; text-align:center; margin-bottom:0.8rem;">
     <img src="Logo.png" alt="LTS Logo" style="height:140px; width:auto;" />
@@ -236,8 +236,8 @@
         // 250 ms voll sichtbar, dann 500 ms Fade-Out
         setTimeout(() => {
           ov.style.opacity = "0";
-          setTimeout(() => ov.remove(), 550);
-        }, 250);
+          setTimeout(() => ov.remove(), 1000);
+        }, 350);
       }
     });
     const userLang = navigator.language || navigator.userLanguage || "";
