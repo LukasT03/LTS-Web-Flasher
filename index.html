@@ -390,14 +390,30 @@
     async function ensureLoader() {
       if (espLoader) return espLoader;
       if (!serialPort) {
-        throw new Error(isGermanRegion ? "Keine serielle Verbindung geöffnet." : "No serial connection open.");
-      }
-      if (!window.esptool || !window.esptool.Transport || !window.esptool.ESPLoader) {
-        throw new Error(isGermanRegion ? "Flasher-Bibliothek nicht geladen." : "Flasher library not loaded.");
+        throw new Error(
+          isGermanRegion
+            ? "Keine serielle Verbindung geöffnet."
+            : "No serial connection open."
+        );
       }
 
-      const transport = new window.esptool.Transport(serialPort);
-      espLoader = new window.esptool.ESPLoader({
+      // Try to support both older and newer bundle globals:
+      // - Some versions expose `window.esptool.ESPLoader`
+      // - Others expose `window.ESPLoader` directly
+      const ESPL = (window.esptool && window.esptool.ESPLoader)
+        ? window.esptool
+        : window;
+
+      if (!ESPL || !ESPL.Transport || !ESPL.ESPLoader) {
+        throw new Error(
+          isGermanRegion
+            ? "Flasher-Bibliothek nicht geladen."
+            : "Flasher library not loaded."
+        );
+      }
+
+      const transport = new ESPL.Transport(serialPort);
+      espLoader = new ESPL.ESPLoader({
         transport,
         baudrate: 921600,
         terminal: {
