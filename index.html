@@ -414,22 +414,18 @@
       }
 
       const transport = new TransportCtor(serialPort);
+      // CLEAN FIX: Use a standard, stable baudrate (115200) instead of high-speed.
+      // This allows the library to correctly detect the chip info without custom hacks.
       espLoader = new LoaderCtor({
         transport,
-        baudrate: 921600,
+        baudrate: 115200, 
+        romBaudrate: 115200,
         terminal: {
           clean() {},
           write() {},
           writeLine() {},
         },
       });
-
-      // Ensure flashSize is set early to avoid
-      // "Cannot read properties of undefined (reading 'indexOf')" inside esptool-js
-      if (!espLoader.flashSize) {
-        // Your boards use 4MB flash; this value is used for size/timeout calculations.
-        espLoader.flashSize = "4MB";
-      }
 
       try {
         await espLoader.main();
@@ -446,7 +442,6 @@
       try {
         setProgress(0, isGermanRegion ? "Wähle seriellen Port…" : "Choose serial port…");
         const port = await navigator.serial.requestPort();
-        // Do not open here; esptool-js / Transport will handle opening the port.
         serialPort = port;
 
         if (connectBtn) {
@@ -525,7 +520,6 @@
       });
     }
 
-    // Load firmware version label only
     async function loadFirmwareVersion() {
       const el = document.getElementById("fwVersionValue");
       try {
