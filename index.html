@@ -503,7 +503,11 @@
 
     if (!supportsWebSerial) {
       if (connectBtn) connectBtn.classList.add("hidden");
-      if (flashBtn) flashBtn.classList.add("hidden");
+      // Keep the Install/Flash button visible, but make sure it cannot be used.
+      if (flashBtn) {
+        flashBtn.classList.remove("hidden");
+        flashBtn.disabled = true;
+      }
       if (unsupportedEl) unsupportedEl.classList.remove("hidden");
 
       // Update status text to indicate lack of support
@@ -514,7 +518,11 @@
       }
     } else {
       if (connectBtn) connectBtn.classList.remove("hidden");
-      if (flashBtn) flashBtn.classList.remove("hidden");
+      if (flashBtn) {
+        flashBtn.classList.remove("hidden");
+        // Initial state: disabled until a board is connected
+        flashBtn.disabled = true;
+      }
       if (unsupportedEl) unsupportedEl.classList.add("hidden");
 
       // Reset status to ready when supported
