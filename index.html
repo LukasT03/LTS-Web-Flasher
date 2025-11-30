@@ -394,7 +394,7 @@
       const LoaderCtor = window.ESPLoader;
 
       const transport = new TransportCtor(serialPort);
-      // Wir bleiben bei 115200 Baud, da dies stabiler ist
+      // Stabile Baudrate von 115200 verwenden
       espLoader = new LoaderCtor({
         transport,
         baudrate: 115200, 
@@ -447,14 +447,7 @@
       setProgress(0, isGermanRegion ? "Starte Flash-Vorgang…" : "Starting flash…");
 
       try {
-        // 1. Loader initialisieren
         const loader = await ensureLoader();
-
-        // 2. CRITICAL FIX: Flash Size manuell erzwingen.
-        // Das behebt den "undefined (reading 'indexOf')" Fehler.
-        // Dies muss passieren BEVOR writeFlash aufgerufen wird.
-        loader.flashSize = "4MB"; 
-
         const url = BIN_URLS[selectedValue] || BIN_URLS.dev;
 
         const res = await fetch(url, { cache: "no-store" });
@@ -468,6 +461,7 @@
           fileArray: [{ address: 0x0, data: dataStr }],
           flashMode: "keep",
           flashFreq: "keep",
+          flashSize: "4MB", /* <-- HIER IST DER FIX: Größe direkt übergeben! */
           eraseAll: false,
           compress: true,
           reportProgress(fileIndex, written, total) {
