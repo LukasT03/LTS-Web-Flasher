@@ -471,6 +471,13 @@
 
       try {
         const loader = await ensureLoader();
+        // Workaround: ensure esptool-js has a valid flashSize string
+        // to avoid 'Cannot read properties of undefined (reading "indexOf")'
+        if (!loader.flashSize) {
+          // Most ESP32 modules (including your boards) use 4MB flash.
+          // This value is only used to adjust timeouts & header metadata.
+          loader.flashSize = "4MB";
+        }
         const url = BIN_URLS[selectedValue] || BIN_URLS.dev;
 
         const res = await fetch(url, { cache: "no-store" });
