@@ -397,30 +397,64 @@
         );
       }
 
-      // Try to support both older and newer bundle globals:
-      // - Some versions expose `window.esptool.ESPLoader`
-      // - Others expose `window.ESPLoader` directly
-      const ESPL = (window.esptool && window.esptool.ESPLoader)
-        ? window.esptool
-        : window;
+      function findGlobalCtor(fragment) {
+        const frag = fragment.toLowerCase();
+        const out = [];
+        for (const key of Object.keys(window)) {
+          try {
+            const lower = key.toLowerCase();
+            if (!lower.includes(frag)) continue;
+            const value = window[key];
+            if (typeof value === "function") {
+              out.push({ key, ctor: value });
+            } else if (value && typeof value === "object") {
+              // also search shallow properties on this object
+              for (const subKey of Object.keys(value)) {
+                const subLower = subKey.toLowerCase();
+                if (!subLower.includes(frag)) continue;
+                const subVal = value[subKey];
+                if (typeof subVal === "function") {
+                  out.push({ key: key + "." + subKey, ctor: subVal });
+                }
+              }
+            }
+          } catch (e) {
+            // ignore weird host objects
+          }
+        }
+        return out;
+      }
 
-      if (!ESPL || !ESPL.Transport || !ESPL.ESPLoader) {
+      const transportCandidates = findGlobalCtor("transport");
+      const loaderCandidates = findGlobalCtor("esploader");
+
+      console.log("[LTS Web Flasher] esptool-js candidates", {
+        transportCandidates,
+        loaderCandidates,
+      });
+
+      if (!transportCandidates.length || !loaderCandidates.length) {
         throw new Error(
-          isGermanRegion
-            ? "Flasher-Bibliothek nicht geladen."
-            : "Flasher library not loaded."
+          (isGermanRegion
+            ? "Flasher-Bibliothek nicht geladen. " +
+              "Bitte prüfe in der Browser-Konsole, ob das esptool-js Script korrekt geladen wurde."
+            : "Flasher library not loaded. " +
+              "Please check the browser console to see if the esptool-js script loaded correctly.")
         );
       }
 
-      const transport = new ESPL.Transport(serialPort);
-      espLoader = new ESPL.ESPLoader({
+      const TransportCtor = transportCandidates[0].ctor;
+      const LoaderCtor = loaderCandidates[0].ctor;
+
+      const transport = new TransportCtor(serialPort);
+      espLoader = new LoaderCtor({
         transport,
         baudrate: 921600,
         terminal: {
           clean() {},
           write() {},
-          writeLine() {}
-        }
+          writeLine() {},
+        },
       });
 
       try {
