@@ -265,7 +265,12 @@
 
   </div>
 
-  <script src="https://unpkg.com/esptool-js@0.5.6/bundle.js"></script>
+  <script type="module">
+    import { ESPLoader, Transport } from "https://unpkg.com/esptool-js@0.5.6/bundle.js";
+    // Expose constructors on window so the rest of the page (classic script) can use them
+    window.ESPLoader = ESPLoader;
+    window.ESPLoaderTransport = Transport;
+  </script>
   <script>
     // Fade-in overlay
     window.addEventListener("load", () => {
@@ -397,54 +402,16 @@
         );
       }
 
-      function findGlobalCtor(fragment) {
-        const frag = fragment.toLowerCase();
-        const out = [];
-        for (const key of Object.keys(window)) {
-          try {
-            const lower = key.toLowerCase();
-            if (!lower.includes(frag)) continue;
-            const value = window[key];
-            if (typeof value === "function") {
-              out.push({ key, ctor: value });
-            } else if (value && typeof value === "object") {
-              // also search shallow properties on this object
-              for (const subKey of Object.keys(value)) {
-                const subLower = subKey.toLowerCase();
-                if (!subLower.includes(frag)) continue;
-                const subVal = value[subKey];
-                if (typeof subVal === "function") {
-                  out.push({ key: key + "." + subKey, ctor: subVal });
-                }
-              }
-            }
-          } catch (e) {
-            // ignore weird host objects
-          }
-        }
-        return out;
-      }
+      const TransportCtor = window.ESPLoaderTransport;
+      const LoaderCtor = window.ESPLoader;
 
-      const transportCandidates = findGlobalCtor("transport");
-      const loaderCandidates = findGlobalCtor("esploader");
-
-      console.log("[LTS Web Flasher] esptool-js candidates", {
-        transportCandidates,
-        loaderCandidates,
-      });
-
-      if (!transportCandidates.length || !loaderCandidates.length) {
+      if (!TransportCtor || !LoaderCtor) {
         throw new Error(
-          (isGermanRegion
-            ? "Flasher-Bibliothek nicht geladen. " +
-              "Bitte prüfe in der Browser-Konsole, ob das esptool-js Script korrekt geladen wurde."
-            : "Flasher library not loaded. " +
-              "Please check the browser console to see if the esptool-js script loaded correctly.")
+          isGermanRegion
+            ? "Flasher-Bibliothek nicht geladen. Bitte prüfe, ob das esptool-js Script ohne Fehler geladen wurde."
+            : "Flasher library not loaded. Please check that the esptool-js script loaded without errors."
         );
       }
-
-      const TransportCtor = transportCandidates[0].ctor;
-      const LoaderCtor = loaderCandidates[0].ctor;
 
       const transport = new TransportCtor(serialPort);
       espLoader = new LoaderCtor({
