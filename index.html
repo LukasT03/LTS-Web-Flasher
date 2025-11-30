@@ -267,7 +267,6 @@
 
   <script type="module">
     import { ESPLoader, Transport } from "https://unpkg.com/esptool-js@0.5.6/bundle.js";
-    // Expose constructors on window so the rest of the page (classic script) can use them
     window.ESPLoader = ESPLoader;
     window.ESPLoaderTransport = Transport;
   </script>
@@ -276,7 +275,6 @@
     window.addEventListener("load", () => {
       const ov = document.getElementById("pageFadeOverlay");
       if (ov) {
-        // 250 ms fully visible, then 500 ms fade-out
         setTimeout(() => {
           ov.style.opacity = "0";
           setTimeout(() => ov.remove(), 1000);
@@ -341,15 +339,9 @@
       if (unsupportedEl) unsupportedEl.classList.add("hidden");
     }
 
-    // Firmware URLs & chip families
     const BIN_URLS = {
       dev: "https://download.lts-design.com/Firmware/ESP32-WROOM-32_latest.bin",
       v4:  "https://download.lts-design.com/Firmware/ControlBoard_V4_latest.bin"
-    };
-
-    const CHIP_FAMILY = {
-      dev: "ESP32",
-      v4:  "ESP32-S3"
     };
 
     let latestVersion = "0.0.0";
@@ -395,27 +387,14 @@
     async function ensureLoader() {
       if (espLoader) return espLoader;
       if (!serialPort) {
-        throw new Error(
-          isGermanRegion
-            ? "Keine serielle Verbindung geöffnet."
-            : "No serial connection open."
-        );
+        throw new Error(isGermanRegion ? "Keine serielle Verbindung geöffnet." : "No serial connection open.");
       }
 
       const TransportCtor = window.ESPLoaderTransport;
       const LoaderCtor = window.ESPLoader;
 
-      if (!TransportCtor || !LoaderCtor) {
-        throw new Error(
-          isGermanRegion
-            ? "Flasher-Bibliothek nicht geladen. Bitte prüfe, ob das esptool-js Script ohne Fehler geladen wurde."
-            : "Flasher library not loaded. Please check that the esptool-js script loaded without errors."
-        );
-      }
-
       const transport = new TransportCtor(serialPort);
-      // CLEAN FIX: Use a standard, stable baudrate (115200) instead of high-speed.
-      // This allows the library to correctly detect the chip info without custom hacks.
+      // Wir bleiben bei 115200 Baud, da dies stabiler ist
       espLoader = new LoaderCtor({
         transport,
         baudrate: 115200, 
@@ -433,7 +412,6 @@
         console.error("Failed to initialise loader", err);
         throw err;
       }
-
       return espLoader;
     }
 
@@ -451,13 +429,10 @@
         if (flashBtn) {
           flashBtn.disabled = false;
         }
-
-        setProgress(0, isGermanRegion
-          ? "Verbunden. Klicke auf \"Firmware flashen\"."
-          : "Connected. Click \"Flash Firmware\".");
+        setProgress(0, isGermanRegion ? "Verbunden. Klicke auf \"Firmware flashen\"." : "Connected. Click \"Flash Firmware\".");
       } catch (err) {
         console.error(err);
-        setProgress(0, (isGermanRegion ? "Fehler beim Verbinden: " : "Failed to connect: ") + (err && err.message ? err.message : String(err)));
+        setProgress(0, (isGermanRegion ? "Fehler beim Verbinden: " : "Failed to connect: ") + err.message);
       }
     }
 
@@ -472,13 +447,18 @@
       setProgress(0, isGermanRegion ? "Starte Flash-Vorgang…" : "Starting flash…");
 
       try {
+        // 1. Loader initialisieren
         const loader = await ensureLoader();
+
+        // 2. CRITICAL FIX: Flash Size manuell erzwingen.
+        // Das behebt den "undefined (reading 'indexOf')" Fehler.
+        // Dies muss passieren BEVOR writeFlash aufgerufen wird.
+        loader.flashSize = "4MB"; 
+
         const url = BIN_URLS[selectedValue] || BIN_URLS.dev;
 
         const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) {
-          throw new Error((isGermanRegion ? "Download fehlgeschlagen: " : "Failed to download firmware: ") + res.status);
-        }
+        if (!res.ok) throw new Error("Download failed: " + res.status);
 
         const buf = await res.arrayBuffer();
         const u8 = new Uint8Array(buf);
@@ -508,17 +488,8 @@
       }
     }
 
-    if (connectBtn) {
-      connectBtn.addEventListener("click", () => {
-        handleConnectClick();
-      });
-    }
-
-    if (flashBtn) {
-      flashBtn.addEventListener("click", () => {
-        handleFlashClick();
-      });
-    }
+    if (connectBtn) connectBtn.addEventListener("click", handleConnectClick);
+    if (flashBtn) flashBtn.addEventListener("click", handleFlashClick);
 
     async function loadFirmwareVersion() {
       const el = document.getElementById("fwVersionValue");
@@ -535,7 +506,6 @@
         if (el) el.textContent = "0.0.0";
       }
     }
-
     loadFirmwareVersion();
   </script>
 
