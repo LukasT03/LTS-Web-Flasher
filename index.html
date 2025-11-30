@@ -496,7 +496,15 @@
 
     async function handleFlashClick() {
       if (!serialPort) {
-        setProgress(0, isGermanRegion ? "Bitte zuerst das Board verbinden." : "Please connect the board first.");
+        if (flashBtn) {
+          flashBtn.disabled = true;
+        }
+        setProgress(
+          0,
+          isGermanRegion
+            ? "Bitte zuerst das Board verbinden."
+            : "Please connect the board first."
+        );
         return;
       }
       if (!flashBtn) return;
@@ -536,7 +544,16 @@
         // Try to hard-reset the board so it exits the bootloader and runs the new firmware.
         await hardResetSerial(serialPort);
 
-        // Close the serial port and reset local state so the user can reconnect if desired.
+        setProgress(100, isGermanRegion ? "Fertig. Board wurde neu gestartet." : "Done. Board has been rebooted.");
+      } catch (err) {
+        console.error(err);
+        setProgress(
+          0,
+          (isGermanRegion ? "Fehler beim Flashen: " : "Flash failed: ") +
+            (err && err.message ? err.message : String(err))
+        );
+      } finally {
+        // Always close the serial port and reset local state so the user can reconnect cleanly.
         try {
           if (serialPort) {
             await serialPort.close();
@@ -555,13 +572,6 @@
         if (flashBtn) {
           flashBtn.disabled = true;
         }
-
-        setProgress(100, isGermanRegion ? "Fertig. Board wurde neu gestartet." : "Done. Board has been rebooted.");
-      } catch (err) {
-        console.error(err);
-        setProgress(0, (isGermanRegion ? "Fehler beim Flashen: " : "Flash failed: ") + (err && err.message ? err.message : String(err)));
-      } finally {
-        flashBtn.disabled = false;
       }
     }
 
