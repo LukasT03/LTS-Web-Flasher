@@ -266,11 +266,11 @@
   </div>
 
   <script type="module">
-    import { ESPLoader, Transport, hardReset } from "https://unpkg.com/esptool-js@0.5.6/bundle.js";
+    import * as esptoolBundle from "https://unpkg.com/esptool-js@0.5.6/bundle.js";
     // Expose constructors and reset helper on window so the rest of the page (classic script) can use them
-    window.ESPLoader = ESPLoader;
-    window.ESPLoaderTransport = Transport;
-    window.ESPHardReset = hardReset;
+    window.ESPLoader = esptoolBundle.ESPLoader;
+    window.ESPLoaderTransport = esptoolBundle.Transport;
+    window.ESPHardReset = esptoolBundle.hardReset || null;
   </script>
   <script>
     // Fade-in overlay
@@ -426,6 +426,11 @@
           writeLine() {},
         },
       });
+
+      // Ensure flashSize is set early to avoid "indexOf" errors inside esptool-js
+      if (!espLoader.flashSize) {
+        espLoader.flashSize = "4MB";
+      }
 
       try {
         await espLoader.main();
