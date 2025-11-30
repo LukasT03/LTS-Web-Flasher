@@ -437,9 +437,9 @@
     async function handleConnectClick() {
       if (!supportsWebSerial) return;
       try {
-        setProgress(0, isGermanRegion ? "Öffne serielle Verbindung…" : "Opening serial connection…");
+        setProgress(0, isGermanRegion ? "Wähle seriellen Port…" : "Choose serial port…");
         const port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 115200 });
+        // Do not open here; esptool-js / Transport will handle opening the port.
         serialPort = port;
 
         if (connectBtn) {
