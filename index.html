@@ -291,6 +291,33 @@
       : [userLang];
     const isGermanRegion = langCandidates.some(l => /^de-(DE|AT)$/i.test(l));
 
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function hardResetSerial(port) {
+      if (!port || !port.setSignals) {
+        return;
+      }
+      try {
+        // Simple reset pattern over DTR/RTS:
+        // pulse the lines so the USB-UART toggles EN/BOOT if wired accordingly.
+        await port.setSignals({
+          dataTerminalReady: false,
+          requestToSend: true,
+        });
+        await sleep(100);
+
+        await port.setSignals({
+          dataTerminalReady: false,
+          requestToSend: false,
+        });
+        await sleep(100);
+      } catch (err) {
+        console.error("Hard reset via Web Serial failed", err);
+      }
+    }
+
     function applyGermanTexts() {
       const titleEl = document.getElementById("pageTitle");
       if (titleEl) titleEl.textContent = "Web Flasher";
@@ -507,13 +534,7 @@
         });
 
         // Try to hard-reset the board so it exits the bootloader and runs the new firmware.
-        if (window.ESPHardReset && loaderTransport) {
-          try {
-            await window.ESPHardReset(loaderTransport);
-          } catch (resetErr) {
-            console.error("Hard reset failed", resetErr);
-          }
-        }
+        await hardResetSerial(serialPort);
 
         // Close the serial port and reset local state so the user can reconnect if desired.
         try {
