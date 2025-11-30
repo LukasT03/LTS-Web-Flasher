@@ -40,6 +40,30 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    .header {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 0.8rem;
+    }
+
+    .header-logo img {
+      height: 140px;
+      width: auto;
+      display: block;
+    }
+
+    .header-text {
+      margin-top: 0.25rem;
+    }
+
+    .fw-version {
+      font-size: 1.05rem;
+      text-align: center;
+    }
+
     h1 {
       margin-top: 0rem;
       margin-bottom: 0.2rem;
@@ -57,9 +81,8 @@
     }
 
     .flasher-card.progress-card {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
+      display: block;
+      padding-bottom: 1rem;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -121,6 +144,8 @@
 
     #flashBtn {
       background-color: #1a1a1a;
+      width: auto;
+      display: inline-block;
     }
     #flashBtn:disabled {
       background-color: #1a1a1a;
@@ -148,15 +173,16 @@
 
     .progress-wrapper {
       font-size: 1rem;
+      margin-top: 0rem;
+      padding-right: 0.2rem;
     }
     .progress-label {
-      margin-bottom: 0.4rem;
       text-align: left;
     }
     .progress-track {
       position: relative;
       width: 100%;
-      height:18px;
+      height:14px;
       border-radius: 999px;
       background: rgba(15, 23, 42, 0.08);
       overflow: hidden;
@@ -170,6 +196,21 @@
       transition: width 0.15s ease-out;
     }
 
+    .progress-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-top: 0;
+      margin-bottom: 0.4rem;
+    }
+
+    .progress-percent {
+      font-size: 0.95rem;
+      text-align: right;
+      opacity: 0.75;
+    }
+
     @media (prefers-color-scheme: dark) {
       .progress-track {
         background: rgba(255,255,255,0.14);
@@ -179,16 +220,28 @@
     .flash-row {
       display: flex;
       align-items: center;
-      gap:1rem;
       margin-top: 0;
     }
     .flash-col-button {
-      flex: 0 0 25%;
+      flex: 0 0 auto;
       min-width: 0;
     }
     .flash-col-progress {
       flex: 1 1 auto;
       min-width: 0;
+    }
+
+    .flash-divider {
+      width: 1px;
+      align-self: stretch;
+      background: rgba(0, 0, 0, 0.12);
+      margin: 0 0.8rem;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .flash-divider {
+        background: rgba(255, 255, 255, 0.24);
+      }
     }
 
     /* Segmented control */
@@ -258,20 +311,45 @@
       outline: none;
     }
 
+    @media (max-height: 800px) {
+      .header {
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        gap: 2rem;
+      }
+
+      .header-text {
+        margin-top: 0;
+        text-align: left;
+      }
+
+      .header-text h1 {
+        text-align: left;
+      }
+
+      .fw-version {
+        text-align: left;
+      }
+    }
+
   </style>
 </head>
 <body>
   <div id="pageRoot" style="position:relative;">
     <div id="pageFadeOverlay" style="position:absolute; inset:0; background:rgb(var(--bg)); z-index:9999; opacity:1; transition:opacity 0.65s ease-out;"></div>
 
-  <div style="width:100%; text-align:center; margin-bottom:0.8rem;">
-    <img src="Logo.png" alt="LTS Logo" style="height:140px; width:auto;" />
-  </div>
-  <h1 id="pageTitle">Web Flasher</h1>
-
-  <div id="fwVersion" style="font-size:1.05rem; text-align:center;">
-    <span id="fwLabel">Current firmware:</span> <span id="fwVersionValue">0.0.0</span>
-  </div>
+    <div class="header">
+      <div class="header-logo">
+        <img src="Logo.png" alt="LTS Logo" />
+      </div>
+      <div class="header-text">
+        <h1 id="pageTitle">Web Flasher</h1>
+        <div id="fwVersion" class="fw-version">
+          <span id="fwLabel">Current firmware:</span> <span id="fwVersionValue">0.0.0</span>
+        </div>
+      </div>
+    </div>
 
   <div class="flasher-card">
 
@@ -292,17 +370,25 @@
       <button type="button" class="lts-btn" id="connectBtn">Connect Board</button>
     </div>
 
+    <div id="wbUnsupported" class="note hidden">
+      WebSerial is not supported in this browser. Please use Chrome or Edge on desktop.
+    </div>
+
   </div>
 
-  <div class="flasher-card progress-card" style="margin-top:1rem;">
+    <div class="flasher-card progress-card" style="margin-top:1rem;">
 
     <div class="flash-row">
       <div class="flash-col-button">
         <button type="button" class="lts-btn" id="flashBtn" disabled>Flash Firmware</button>
       </div>
+      <div class="flash-divider" aria-hidden="true"></div>
       <div class="flash-col-progress">
         <div id="progressWrapper" class="progress-wrapper">
-          <div id="progressLabel" class="progress-label">Status: Ready</div>
+          <div class="progress-header">
+            <div id="progressLabel" class="progress-label">Status: Ready</div>
+            <div id="progressPercent" class="progress-percent">0%</div>
+          </div>
           <div class="progress-track">
             <div id="progressBar" class="progress-bar"></div>
           </div>
@@ -310,9 +396,6 @@
       </div>
     </div>
 
-    <div id="wbUnsupported" class="note hidden">
-      WebSerial is not supported in this browser. Please use Chrome or Edge on desktop.
-    </div>
 
   </div>
 
@@ -409,19 +492,37 @@
     const progressWrapper = document.getElementById("progressWrapper");
     const progressBar = document.getElementById("progressBar");
     const progressLabel = document.getElementById("progressLabel");
+    const progressPercent = document.getElementById("progressPercent");
 
     if (progressLabel) {
       progressLabel.textContent = isGermanRegion ? "Status: Bereit" : "Status: Ready";
+    }
+    if (progressPercent) {
+      progressPercent.textContent = "0 %";
     }
 
     if (!supportsWebSerial) {
       if (connectBtn) connectBtn.classList.add("hidden");
       if (flashBtn) flashBtn.classList.add("hidden");
       if (unsupportedEl) unsupportedEl.classList.remove("hidden");
+
+      // Update status text to indicate lack of support
+      if (progressLabel) {
+        progressLabel.textContent = isGermanRegion
+          ? "Status: Nicht unterstützt"
+          : "Status: Not supported";
+      }
     } else {
       if (connectBtn) connectBtn.classList.remove("hidden");
       if (flashBtn) flashBtn.classList.remove("hidden");
       if (unsupportedEl) unsupportedEl.classList.add("hidden");
+
+      // Reset status to ready when supported
+      if (progressLabel) {
+        progressLabel.textContent = isGermanRegion
+          ? "Status: Bereit"
+          : "Status: Ready";
+      }
     }
 
     // Firmware URLs & chip families
@@ -472,6 +573,11 @@
       if (!progressWrapper || !progressBar || !progressLabel) return;
       const clamped = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
       progressBar.style.width = clamped + "%";
+
+      if (progressPercent) {
+        progressPercent.textContent = clamped + " %";
+      }
+
       if (labelText != null) {
         const prefix = "Status: ";
         progressLabel.textContent = prefix + labelText;
