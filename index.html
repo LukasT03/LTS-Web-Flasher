@@ -119,6 +119,37 @@
       text-align: center;
     }
 
+    .progress-wrapper {
+      margin-top: 0.9rem;
+      font-size: 0.95rem;
+    }
+    .progress-label {
+      margin-bottom: 0.4rem;
+      text-align: center;
+    }
+    .progress-track {
+      position: relative;
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.08);
+      overflow: hidden;
+    }
+    .progress-bar {
+      position: absolute;
+      inset: 0;
+      width: 0%;
+      border-radius: inherit;
+      background: #0E7AFE;
+      transition: width 0.15s ease-out;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .progress-track {
+        background: rgba(255,255,255,0.14);
+      }
+    }
+
     /* Segmented control */
     .segmented {
       display: flex;
@@ -217,9 +248,15 @@
     </div>
 
     <div style="margin-top:1.2rem;">
-      <esp-web-install-button id="installBtn" class="hidden">
-        <button slot="activate" type="button" class="lts-btn" id="flashBtn">Flash Firmware</button>
-      </esp-web-install-button>
+      <button type="button" class="lts-btn" id="connectBtn">Connect Board</button>
+      <button type="button" class="lts-btn" id="flashBtn" style="margin-top:0.6rem;" disabled>Flash Firmware</button>
+
+      <div id="progressWrapper" class="progress-wrapper hidden">
+        <div id="progressLabel" class="progress-label"></div>
+        <div class="progress-track">
+          <div id="progressBar" class="progress-bar"></div>
+        </div>
+      </div>
 
       <div id="wbUnsupported" class="note hidden">
         WebSerial is not supported in this browser. Please use Chrome or Edge on desktop.
@@ -228,18 +265,20 @@
 
   </div>
 
+  <script src="https://unpkg.com/esptool-js@0.5.6/bundle.js"></script>
   <script>
     // Fade-in overlay
     window.addEventListener("load", () => {
       const ov = document.getElementById("pageFadeOverlay");
       if (ov) {
-        // 250 ms voll sichtbar, dann 500 ms Fade-Out
+        // 250 ms fully visible, then 500 ms fade-out
         setTimeout(() => {
           ov.style.opacity = "0";
           setTimeout(() => ov.remove(), 1000);
         }, 350);
       }
     });
+
     const userLang = navigator.language || navigator.userLanguage || "";
     const langCandidates = (navigator.languages && navigator.languages.length)
       ? navigator.languages
@@ -263,6 +302,9 @@
       const flashBtnEl = document.getElementById("flashBtn");
       if (flashBtnEl) flashBtnEl.textContent = "Firmware flashen";
 
+      const connectBtnEl = document.getElementById("connectBtn");
+      if (connectBtnEl) connectBtnEl.textContent = "Board verbinden";
+
       const unsupportedEl = document.getElementById("wbUnsupported");
       if (unsupportedEl) {
         unsupportedEl.innerHTML =
@@ -274,24 +316,25 @@
       applyGermanTexts();
     }
 
-    const installBtnEl = document.getElementById("installBtn");
-    const unsupportedEl = document.getElementById("wbUnsupported");
-
     const supportsWebSerial =
       typeof navigator !== "undefined" && "serial" in navigator;
 
-    if (supportsWebSerial) {
-      installBtnEl.classList.remove("hidden");
-    } else {
-      unsupportedEl.classList.remove("hidden");
-    }
+    const connectBtn = document.getElementById("connectBtn");
+    const flashBtn = document.getElementById("flashBtn");
+    const unsupportedEl = document.getElementById("wbUnsupported");
+    const progressWrapper = document.getElementById("progressWrapper");
+    const progressBar = document.getElementById("progressBar");
+    const progressLabel = document.getElementById("progressLabel");
 
-    // Load ESP Web Tools
-    (async () => {
-      try {
-        await import("https://unpkg.com/esp-web-tools@9.4.0/dist/web/install-button.js?module");
-      } catch (e) {}
-    })();
+    if (!supportsWebSerial) {
+      if (connectBtn) connectBtn.classList.add("hidden");
+      if (flashBtn) flashBtn.classList.add("hidden");
+      if (unsupportedEl) unsupportedEl.classList.remove("hidden");
+    } else {
+      if (connectBtn) connectBtn.classList.remove("hidden");
+      if (flashBtn) flashBtn.classList.remove("hidden");
+      if (unsupportedEl) unsupportedEl.classList.add("hidden");
+    }
 
     // Firmware URLs & chip families
     const BIN_URLS = {
@@ -306,58 +349,159 @@
 
     let latestVersion = "0.0.0";
     let selectedValue = "dev";
-    let currentBlobUrl = null;
 
     const seg = document.getElementById("boardSegment");
-    const segIndicator = seg.querySelector(".seg-indicator");
-    const segButtons = Array.from(seg.querySelectorAll("button[data-value]"));
-
-    function createManifestBlob(val) {
-      const manifest = {
-        name: val === "dev" ? "ESP32 (Driver Board)" : "Control Board V4",
-        version: latestVersion,
-        builds: [
-          {
-            chipFamily: CHIP_FAMILY[val],
-            parts: [{ path: BIN_URLS[val], offset: 0 }]
-          }
-        ]
-      };
-      return URL.createObjectURL(
-        new Blob([JSON.stringify(manifest)], { type: "application/json" })
-      );
-    }
+    const segIndicator = seg ? seg.querySelector(".seg-indicator") : null;
+    const segButtons = seg ? Array.from(seg.querySelectorAll("button[data-value]")) : [];
 
     function updateIndicator() {
       if (!segIndicator) return;
-      // two segments: dev (index 0), v4 (index 1)
       const index = selectedValue === "dev" ? 0 : 1;
       const translate = index * 100;
       segIndicator.style.transform = `translateX(${translate}%)`;
     }
 
-    function updateManifest() {
-      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
-      currentBlobUrl = createManifestBlob(selectedValue);
-      installBtnEl.setAttribute("manifest", currentBlobUrl);
-      updateIndicator();
-    }
-
     segButtons.forEach(btn => {
       btn.addEventListener("click", () => {
         const val = btn.dataset.value;
-        if (val !== selectedValue) {
+        if (val && val !== selectedValue) {
           selectedValue = val;
           segButtons.forEach(b =>
             b.classList.toggle("is-selected", b === btn)
           );
-          updateManifest();
+          updateIndicator();
         }
       });
     });
 
+    updateIndicator();
 
-    // Load firmware version
+    let serialPort = null;
+    let espLoader = null;
+
+    function setProgress(percent, labelText) {
+      if (!progressWrapper || !progressBar || !progressLabel) return;
+      progressWrapper.classList.remove("hidden");
+      const clamped = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
+      progressBar.style.width = clamped + "%";
+      progressLabel.textContent = labelText || "";
+    }
+
+    async function ensureLoader() {
+      if (espLoader) return espLoader;
+      if (!serialPort) {
+        throw new Error(isGermanRegion ? "Keine serielle Verbindung geöffnet." : "No serial connection open.");
+      }
+      if (!window.esptool || !window.esptool.Transport || !window.esptool.ESPLoader) {
+        throw new Error(isGermanRegion ? "Flasher-Bibliothek nicht geladen." : "Flasher library not loaded.");
+      }
+
+      const transport = new window.esptool.Transport(serialPort);
+      espLoader = new window.esptool.ESPLoader({
+        transport,
+        baudrate: 921600,
+        terminal: {
+          clean() {},
+          write() {},
+          writeLine() {}
+        }
+      });
+
+      try {
+        await espLoader.main();
+      } catch (err) {
+        console.error("Failed to initialise loader", err);
+        throw err;
+      }
+
+      return espLoader;
+    }
+
+    async function handleConnectClick() {
+      if (!supportsWebSerial) return;
+      try {
+        setProgress(0, isGermanRegion ? "Öffne serielle Verbindung…" : "Opening serial connection…");
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
+        serialPort = port;
+
+        if (connectBtn) {
+          connectBtn.textContent = isGermanRegion ? "Verbunden" : "Connected";
+          connectBtn.disabled = true;
+        }
+        if (flashBtn) {
+          flashBtn.disabled = false;
+        }
+
+        setProgress(0, isGermanRegion
+          ? "Verbunden. Klicke auf \"Firmware flashen\"."
+          : "Connected. Click \"Flash Firmware\".");
+      } catch (err) {
+        console.error(err);
+        setProgress(0, (isGermanRegion ? "Fehler beim Verbinden: " : "Failed to connect: ") + (err && err.message ? err.message : String(err)));
+      }
+    }
+
+    async function handleFlashClick() {
+      if (!serialPort) {
+        setProgress(0, isGermanRegion ? "Bitte zuerst das Board verbinden." : "Please connect the board first.");
+        return;
+      }
+      if (!flashBtn) return;
+
+      flashBtn.disabled = true;
+      setProgress(0, isGermanRegion ? "Starte Flash-Vorgang…" : "Starting flash…");
+
+      try {
+        const loader = await ensureLoader();
+        const url = BIN_URLS[selectedValue] || BIN_URLS.dev;
+
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error((isGermanRegion ? "Download fehlgeschlagen: " : "Failed to download firmware: ") + res.status);
+        }
+
+        const buf = await res.arrayBuffer();
+        const u8 = new Uint8Array(buf);
+        const dataStr = loader.ui8ToBstr(u8);
+
+        await loader.writeFlash({
+          fileArray: [{ address: 0x0, data: dataStr }],
+          flashMode: "keep",
+          flashFreq: "keep",
+          eraseAll: false,
+          compress: true,
+          reportProgress(fileIndex, written, total) {
+            const pct = total > 0 ? Math.round((written / total) * 100) : 0;
+            const msg = isGermanRegion
+              ? `Firmware wird übertragen… ${pct}%`
+              : `Flashing firmware… ${pct}%`;
+            setProgress(pct, msg);
+          }
+        });
+
+        setProgress(100, isGermanRegion ? "Fertig. Board wird neu gestartet." : "Done. Board is rebooting.");
+      } catch (err) {
+        console.error(err);
+        setProgress(0, (isGermanRegion ? "Fehler beim Flashen: " : "Flash failed: ") + (err && err.message ? err.message : String(err)));
+      } finally {
+        flashBtn.disabled = false;
+      }
+    }
+
+    if (connectBtn) {
+      connectBtn.addEventListener("click", () => {
+        handleConnectClick();
+      });
+    }
+
+    if (flashBtn) {
+      flashBtn.addEventListener("click", () => {
+        handleFlashClick();
+      });
+    }
+
+    // Load firmware version label only
     async function loadFirmwareVersion() {
       const el = document.getElementById("fwVersionValue");
       try {
@@ -367,14 +511,13 @@
         );
         const txt = (await res.text()).trim().split(/\s+/)[0];
         latestVersion = txt;
-        el.textContent = txt;
-        updateManifest();
+        if (el) el.textContent = txt;
       } catch {
-        el.textContent = "0.0.0";
         latestVersion = "0.0.0";
-        updateManifest();
+        if (el) el.textContent = "0.0.0";
       }
     }
+
     loadFirmwareVersion();
   </script>
 
