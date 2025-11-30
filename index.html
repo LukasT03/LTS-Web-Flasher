@@ -442,6 +442,16 @@
         );
       }
 
+      // Ensure the serial port is closed before esptool-js tries to open it again.
+      // This avoids "Failed to execute 'open' on 'SerialPort': The port is already open."
+      try {
+        if (serialPort && (serialPort.readable || serialPort.writable)) {
+          await serialPort.close();
+        }
+      } catch (preCloseErr) {
+        console.error("Pre-ensureLoader close failed", preCloseErr);
+      }
+
       const transport = new TransportCtor(serialPort);
       loaderTransport = transport;
       espLoader = new LoaderCtor({
