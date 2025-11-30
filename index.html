@@ -41,7 +41,8 @@
     }
 
     h1 {
-      margin-top: 0.2rem;
+      margin-top: 0rem;
+      margin-bottom: 0.2rem;
       font-size: 2rem;
       text-align: center;
     }
@@ -52,7 +53,13 @@
       background: #ffffff;
       border-radius: 28px;
       padding: 1rem;
-      margin-top: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .flasher-card.progress-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -112,6 +119,26 @@
       cursor: not-allowed;
     }
 
+    #flashBtn {
+      background-color: #1a1a1a;
+    }
+    #flashBtn:disabled {
+      background-color: #1a1a1a;
+      opacity: 0.6;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      #flashBtn {
+        background-color: #f2f2f7;
+        color: #111 !important;
+      }
+      #flashBtn:disabled {
+        background-color: #f2f2f7;
+        color: #111 !important;
+        opacity: 0.6;
+      }
+    }
+
     .note {
       color: #ff8c28;
       font-size: 1.1rem;
@@ -120,17 +147,16 @@
     }
 
     .progress-wrapper {
-      margin-top: 0.9rem;
-      font-size: 0.95rem;
+      font-size: 1rem;
     }
     .progress-label {
       margin-bottom: 0.4rem;
-      text-align: center;
+      text-align: left;
     }
     .progress-track {
       position: relative;
       width: 100%;
-      height: 10px;
+      height:18px;
       border-radius: 999px;
       background: rgba(15, 23, 42, 0.08);
       overflow: hidden;
@@ -150,6 +176,21 @@
       }
     }
 
+    .flash-row {
+      display: flex;
+      align-items: center;
+      gap:1rem;
+      margin-top: 0;
+    }
+    .flash-col-button {
+      flex: 0 0 25%;
+      min-width: 0;
+    }
+    .flash-col-progress {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
     /* Segmented control */
     .segmented {
       display: flex;
@@ -160,7 +201,7 @@
       box-sizing: border-box;
       position: relative;
       overflow: hidden;
-      margin-top: 1rem;
+      margin-top: 0.8rem;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -226,7 +267,11 @@
   <div style="width:100%; text-align:center; margin-bottom:0.8rem;">
     <img src="Logo.png" alt="LTS Logo" style="height:140px; width:auto;" />
   </div>
-  <h1 id="pageTitle">LTS Web Flasher</h1>
+  <h1 id="pageTitle">Web Flasher</h1>
+
+  <div id="fwVersion" style="font-size:1.05rem; text-align:center;">
+    <span id="fwLabel">Current firmware:</span> <span id="fwVersionValue">0.0.0</span>
+  </div>
 
   <div class="flasher-card">
 
@@ -237,30 +282,36 @@
     </ol>
     <hr style="border:0; border-top:1px solid #d1d5db;">
 
-    <div id="fwVersion" style="margin-top:1rem;font-weight:700; font-size:1.1rem;">
-      <span id="fwLabel">Current version:</span> <span id="fwVersionValue">0.0.0</span>
-    </div>
-
     <div id="boardSegment" class="segmented">
       <div class="seg-indicator"></div>
       <button class="seg-btn is-selected" data-value="dev">ESP32</button>
       <button class="seg-btn" data-value="v4">Control Board</button>
     </div>
 
-    <div style="margin-top:1.2rem;">
+    <div style="margin-top:0.8rem;">
       <button type="button" class="lts-btn" id="connectBtn">Connect Board</button>
-      <button type="button" class="lts-btn" id="flashBtn" style="margin-top:0.6rem;" disabled>Flash Firmware</button>
+    </div>
 
-      <div id="progressWrapper" class="progress-wrapper hidden">
-        <div id="progressLabel" class="progress-label"></div>
-        <div class="progress-track">
-          <div id="progressBar" class="progress-bar"></div>
+  </div>
+
+  <div class="flasher-card progress-card" style="margin-top:1rem;">
+
+    <div class="flash-row">
+      <div class="flash-col-button">
+        <button type="button" class="lts-btn" id="flashBtn" disabled>Flash Firmware</button>
+      </div>
+      <div class="flash-col-progress">
+        <div id="progressWrapper" class="progress-wrapper">
+          <div id="progressLabel" class="progress-label">Status: Ready</div>
+          <div class="progress-track">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
         </div>
       </div>
+    </div>
 
-      <div id="wbUnsupported" class="note hidden">
-        WebSerial is not supported in this browser. Please use Chrome or Edge on desktop.
-      </div>
+    <div id="wbUnsupported" class="note hidden">
+      WebSerial is not supported in this browser. Please use Chrome or Edge on desktop.
     </div>
 
   </div>
@@ -327,13 +378,13 @@
       const step3El = document.getElementById("step3");
       if (step1El) step1El.textContent = "Schließe dein Board per USB an deinen Computer an";
       if (step2El) step2El.textContent = "Wähle die korrekte Board-Version im Menü aus";
-      if (step3El) step3El.textContent = "Drücke den Flash-Button und wähle den korrekten COM-Port aus";
+      if (step3El) step3El.textContent = "Drücke den Installieren-Button und wähle den korrekten COM-Port aus";
 
       const fwLabelEl = document.getElementById("fwLabel");
-      if (fwLabelEl) fwLabelEl.textContent = "Aktuelle Version:";
+      if (fwLabelEl) fwLabelEl.textContent = "Aktuelle Firmware:";
 
       const flashBtnEl = document.getElementById("flashBtn");
-      if (flashBtnEl) flashBtnEl.textContent = "Firmware flashen";
+      if (flashBtnEl) flashBtnEl.textContent = "Installieren";
 
       const connectBtnEl = document.getElementById("connectBtn");
       if (connectBtnEl) connectBtnEl.textContent = "Board verbinden";
@@ -358,6 +409,10 @@
     const progressWrapper = document.getElementById("progressWrapper");
     const progressBar = document.getElementById("progressBar");
     const progressLabel = document.getElementById("progressLabel");
+
+    if (progressLabel) {
+      progressLabel.textContent = isGermanRegion ? "Status: Bereit" : "Status: Ready";
+    }
 
     if (!supportsWebSerial) {
       if (connectBtn) connectBtn.classList.add("hidden");
@@ -415,10 +470,12 @@
 
     function setProgress(percent, labelText) {
       if (!progressWrapper || !progressBar || !progressLabel) return;
-      progressWrapper.classList.remove("hidden");
       const clamped = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
       progressBar.style.width = clamped + "%";
-      progressLabel.textContent = labelText || "";
+      if (labelText != null) {
+        const prefix = "Status: ";
+        progressLabel.textContent = prefix + labelText;
+      }
     }
 
     async function ensureLoader() {
