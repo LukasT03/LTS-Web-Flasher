@@ -424,6 +424,13 @@
         },
       });
 
+      // Ensure flashSize is set early to avoid
+      // "Cannot read properties of undefined (reading 'indexOf')" inside esptool-js
+      if (!espLoader.flashSize) {
+        // Your boards use 4MB flash; this value is used for size/timeout calculations.
+        espLoader.flashSize = "4MB";
+      }
+
       try {
         await espLoader.main();
       } catch (err) {
@@ -471,13 +478,6 @@
 
       try {
         const loader = await ensureLoader();
-        // Workaround: ensure esptool-js has a valid flashSize string
-        // to avoid 'Cannot read properties of undefined (reading "indexOf")'
-        if (!loader.flashSize) {
-          // Most ESP32 modules (including your boards) use 4MB flash.
-          // This value is only used to adjust timeouts & header metadata.
-          loader.flashSize = "4MB";
-        }
         const url = BIN_URLS[selectedValue] || BIN_URLS.dev;
 
         const res = await fetch(url, { cache: "no-store" });
