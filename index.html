@@ -50,18 +50,21 @@
     }
 
     .header-logo img {
-      height: 140px;
+      max-height: 120px;
+      height: auto;
       width: auto;
+      max-width: 100%;
       display: block;
     }
 
     .header-text {
-      margin-top: 0.25rem;
+      margin-top: 1.1rem;
     }
 
     .fw-version {
       font-size: 1.05rem;
       text-align: center;
+      white-space: nowrap;
     }
 
     h1 {
@@ -69,6 +72,7 @@
       margin-bottom: 0.2rem;
       font-size: 2rem;
       text-align: center;
+      white-space: nowrap;
     }
 
     .hidden { display: none !important; }
@@ -126,7 +130,7 @@
     .lts-btn {
       padding: 0.85rem 1.5rem;
       border-radius: 14px;
-      background-color: #0E7AFE;
+      background-color: #1a1a1a;
       color: #fff !important;
       border: none;
       font-size: 1.1rem;
@@ -137,29 +141,29 @@
       display: block;
     }
     .lts-btn:disabled {
-      background-color: #1364C4;
+      background-color: #1a1a1a;
       opacity: 0.6;
       cursor: not-allowed;
     }
 
     #flashBtn {
-      background-color: #1a1a1a;
+      background-color: #0E7AFE;
       width: auto;
       display: inline-block;
     }
     #flashBtn:disabled {
-      background-color: #1a1a1a;
+      background-color: #1364C4;
       opacity: 0.6;
     }
 
     @media (prefers-color-scheme: dark) {
       #flashBtn {
-        background-color: #f2f2f7;
-        color: #111 !important;
+        background-color: #0E7AFE;
+        color: #fff !important;
       }
       #flashBtn:disabled {
-        background-color: #f2f2f7;
-        color: #111 !important;
+        background-color: #1364C4;
+        color: #fff !important;
         opacity: 0.6;
       }
     }
@@ -206,9 +210,9 @@
     }
 
     .progress-percent {
-      font-size: 0.95rem;
+      font-size: 1rem;
       text-align: right;
-      opacity: 0.75;
+      opacity: 1;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -234,13 +238,13 @@
     .flash-divider {
       width: 1px;
       align-self: stretch;
-      background: rgba(0, 0, 0, 0.12);
+      background: #d1d5db;
       margin: 0 0.8rem;
     }
 
     @media (prefers-color-scheme: dark) {
       .flash-divider {
-        background: rgba(255, 255, 255, 0.24);
+        background: #d1d5db;
       }
     }
 
@@ -312,11 +316,21 @@
     }
 
     @media (max-height: 800px) {
+      body {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+      }
+
       .header {
         flex-direction: row;
         justify-content: center;
         align-items: center;
         gap: 2rem;
+      }
+
+      .header-logo img {
+        max-height: 120px;
+        max-width: 45vw;
       }
 
       .header-text {
@@ -461,7 +475,7 @@
       const step3El = document.getElementById("step3");
       if (step1El) step1El.textContent = "Schließe dein Board per USB an deinen Computer an";
       if (step2El) step2El.textContent = "Wähle die korrekte Board-Version im Menü aus";
-      if (step3El) step3El.textContent = "Drücke den Installieren-Button und wähle den korrekten COM-Port aus";
+      if (step3El) step3El.textContent = "Drücke den Button zum Verbinden und wähle den korrekten COM-Port aus";
 
       const fwLabelEl = document.getElementById("fwLabel");
       if (fwLabelEl) fwLabelEl.textContent = "Aktuelle Firmware:";
@@ -495,7 +509,7 @@
     const progressPercent = document.getElementById("progressPercent");
 
     if (progressLabel) {
-      progressLabel.textContent = isGermanRegion ? "Status: Bereit" : "Status: Ready";
+      progressLabel.textContent = isGermanRegion ? "Status: Bereit für Verbindung" : "Status: Ready";
     }
     if (progressPercent) {
       progressPercent.textContent = "0 %";
@@ -513,8 +527,8 @@
       // Update status text to indicate lack of support
       if (progressLabel) {
         progressLabel.textContent = isGermanRegion
-          ? "Status: Nicht unterstützt"
-          : "Status: Not supported";
+          ? "Nicht unterstützt"
+          : "Not supported";
       }
     } else {
       if (connectBtn) connectBtn.classList.remove("hidden");
