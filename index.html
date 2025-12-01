@@ -368,9 +368,10 @@
   <div class="flasher-card">
 
     <ol>
-      <li id="step1">Connect your LTS Respooler to your computer</li>
-      <li id="step2">Select your board model below</li>
-      <li id="step3">Click “Flash Firmware”</li>
+      <li id="step1">Connect your board to your computer via USB</li>
+      <li id="step2">Select the correct board version from the menu</li>
+      <li id="step3">Click the connect button and choose the correct COM port</li>
+      <li id="step4">Press Flash to install the firmware</li>
     </ol>
     <hr style="border:0; border-top:1px solid #d1d5db;">
 
@@ -394,7 +395,7 @@
 
     <div class="flash-row">
       <div class="flash-col-button">
-        <button type="button" class="lts-btn" id="flashBtn" disabled>Flash Firmware</button>
+        <button type="button" class="lts-btn" id="flashBtn" disabled>Flash</button>
       </div>
       <div class="flash-divider" aria-hidden="true"></div>
       <div class="flash-col-progress">
@@ -473,9 +474,11 @@
       const step1El = document.getElementById("step1");
       const step2El = document.getElementById("step2");
       const step3El = document.getElementById("step3");
+      const step4El = document.getElementById("step4");
       if (step1El) step1El.textContent = "Schließe dein Board per USB an deinen Computer an";
       if (step2El) step2El.textContent = "Wähle die korrekte Board-Version im Menü aus";
       if (step3El) step3El.textContent = "Drücke den Button zum Verbinden und wähle den korrekten COM-Port aus";
+      if (step4El) step4El.textContent = "Installiere die Firmware über den Button";
 
       const fwLabelEl = document.getElementById("fwLabel");
       if (fwLabelEl) fwLabelEl.textContent = "Aktuelle Firmware:";
@@ -509,7 +512,7 @@
     const progressPercent = document.getElementById("progressPercent");
 
     if (progressLabel) {
-      progressLabel.textContent = isGermanRegion ? "Status: Bereit für Verbindung" : "Status: Ready";
+      progressLabel.textContent = isGermanRegion ? "Status: Bereit für Verbindung" : "Status: Ready for connection";
     }
     if (progressPercent) {
       progressPercent.textContent = "0 %";
@@ -542,8 +545,8 @@
       // Reset status to ready when supported
       if (progressLabel) {
         progressLabel.textContent = isGermanRegion
-          ? "Status: Bereit"
-          : "Status: Ready";
+          ? "Status: Bereit für Verbindung"
+          : "Status: Ready for connection";
       }
     }
 
@@ -587,9 +590,10 @@
 
     updateIndicator();
 
-    let serialPort = null;
-    let espLoader = null;
-    let loaderTransport = null;
+let serialPort = null;
+let espLoader = null;
+let loaderTransport = null;
+let lastErrorMessage = "";
 
     function setProgress(percent, labelText) {
       if (!progressWrapper || !progressBar || !progressLabel) return;
@@ -611,8 +615,8 @@
       if (!serialPort) {
         throw new Error(
           isGermanRegion
-            ? "Keine serielle Verbindung geöffnet."
-            : "No serial connection open."
+            ? "Keine serielle Verbindung offen"
+            : "No serial connection open"
         );
       }
 
@@ -622,8 +626,8 @@
       if (!TransportCtor || !LoaderCtor) {
         throw new Error(
           isGermanRegion
-            ? "Flasher-Bibliothek nicht geladen. Bitte prüfe, ob das esptool-js Script ohne Fehler geladen wurde."
-            : "Flasher library not loaded. Please check that the esptool-js script loaded without errors."
+            ? "Flasher-Bibliothek nicht geladen"
+            : "Flasher library not loaded"
         );
       }
 
@@ -667,7 +671,7 @@
     async function handleConnectClick() {
       if (!supportsWebSerial) return;
       try {
-        setProgress(0, isGermanRegion ? "Wähle seriellen Port…" : "Choose serial port…");
+        setProgress(0, isGermanRegion ? "Wähle einen seriellen Port" : "Please choose a serial port");
         const port = await navigator.serial.requestPort();
         // Do not open here; esptool-js / Transport will handle opening the port.
         serialPort = port;
@@ -681,11 +685,29 @@
         }
 
         setProgress(0, isGermanRegion
-          ? "Verbunden. Klicke auf \"Firmware flashen\"."
-          : "Connected. Click \"Flash Firmware\".");
+          ? "Erfolgreich verbunden!"
+          : "Connected successfully!");
       } catch (err) {
         console.error(err);
-        setProgress(0, (isGermanRegion ? "Fehler beim Verbinden: " : "Failed to connect: ") + (err && err.message ? err.message : String(err)));
+        const detailsText = err && err.message ? err.message : String(err);
+        const genericText = isGermanRegion ? "Fehler beim Verbinden!" : "Failed to connect!";
+        lastErrorMessage = detailsText;
+
+        // Set generic status and 0 %
+        setProgress(0, genericText);
+
+        if (progressLabel) {
+          const linkLabel = isGermanRegion ? "Mehr" : "More";
+          progressLabel.innerHTML = genericText + ' <a href="#" id="connectErrorMoreLink">' + linkLabel + '</a>';
+
+          const moreLink = document.getElementById("connectErrorMoreLink");
+          if (moreLink) {
+            moreLink.addEventListener("click", function (e) {
+              e.preventDefault();
+              alert(lastErrorMessage || detailsText);
+            });
+          }
+        }
       }
     }
 
@@ -697,15 +719,15 @@
         setProgress(
           0,
           isGermanRegion
-            ? "Bitte zuerst das Board verbinden."
-            : "Please connect the board first."
+            ? "Bitte zuerst das Board verbinden"
+            : "Please connect the board first"
         );
         return;
       }
       if (!flashBtn) return;
 
       flashBtn.disabled = true;
-      setProgress(0, isGermanRegion ? "Starte Flash-Vorgang…" : "Starting flash…");
+      setProgress(0, isGermanRegion ? "Wird initialisiert, bitte warten..." : "Initializing, please wait...");
 
       try {
         const loader = await ensureLoader();
@@ -730,8 +752,8 @@
           reportProgress(fileIndex, written, total) {
             const pct = total > 0 ? Math.round((written / total) * 100) : 0;
             const msg = isGermanRegion
-              ? `Firmware wird übertragen… ${pct}%`
-              : `Flashing firmware… ${pct}%`;
+              ? `Firmware wird installiert... ${pct}%`
+              : `Flashing firmware... ${pct}%`;
             setProgress(pct, msg);
           }
         });
@@ -739,14 +761,38 @@
         // Try to hard-reset the board so it exits the bootloader and runs the new firmware.
         await hardResetSerial(serialPort);
 
-        setProgress(100, isGermanRegion ? "Fertig. Board wurde neu gestartet." : "Done. Board has been rebooted.");
+        setProgress(100, isGermanRegion ? "Erfolgreich installiert!" : "Flashed successfully!");
       } catch (err) {
         console.error(err);
-        setProgress(
-          0,
-          (isGermanRegion ? "Fehler beim Flashen: " : "Flash failed: ") +
-            (err && err.message ? err.message : String(err))
-        );
+        const detailsText = err && err.message ? err.message : String(err);
+
+        // Use a more specific generic message if the error was a download failure
+        let genericText;
+        if (detailsText.includes(isGermanRegion ? "Download fehlgeschlagen" : "Failed to download firmware")) {
+          genericText = isGermanRegion
+            ? "Download fehlgeschlagen!"
+            : "Failed to download firmware!";
+        } else {
+          genericText = isGermanRegion ? "Fehler beim Flashen!" : "Flash failed!";
+        }
+
+        lastErrorMessage = detailsText;
+
+        // Set generic status and 0 %
+        setProgress(0, genericText);
+
+        if (progressLabel) {
+          const linkLabel = isGermanRegion ? "Mehr" : "More";
+          progressLabel.innerHTML = genericText + ' <a href="#" id="flashErrorMoreLink">' + linkLabel + '</a>';
+
+          const moreLink = document.getElementById("flashErrorMoreLink");
+          if (moreLink) {
+            moreLink.addEventListener("click", function (e) {
+              e.preventDefault();
+              alert(lastErrorMessage || detailsText);
+            });
+          }
+        }
       } finally {
         // Always close the serial port and reset local state so the user can reconnect cleanly.
         try {
