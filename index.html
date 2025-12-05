@@ -679,6 +679,32 @@ let lastErrorMessage = "";
         throw err;
       }
 
+      // After initialising the loader, verify that the connected chip
+      // matches the expected family for the selected board.
+      try {
+        const expectedFamily = CHIP_FAMILY[selectedValue];
+        const detectedRaw =
+          (espLoader && (espLoader.chipFamily || espLoader.chipName)) || "";
+        const detectedFamily = String(detectedRaw).toUpperCase();
+
+        if (expectedFamily && detectedFamily) {
+          const expectedUpper = String(expectedFamily).toUpperCase();
+          if (detectedFamily !== expectedUpper) {
+            const boardLabel =
+              selectedValue === "v4"
+                ? (isGermanRegion ? "Control Board, ESP32-S3" : "Control Board, ESP32-S3")
+                : "ESP32";
+            const msg = isGermanRegion
+              ? `Das ausgewählte Board (${boardLabel}) passt nicht zum angeschlossenen Chip (${detectedFamily}). Bitte wähle im Menü das passende Board aus.`
+              : `The selected board (${boardLabel}) does not match the connected chip (${detectedFamily}). Please choose the correct board in the menu.`;
+            throw new Error(msg);
+          }
+        }
+      } catch (chipErr) {
+        console.error("Chip-family mismatch or detection error", chipErr);
+        throw chipErr;
+      }
+
       return espLoader;
     }
 
