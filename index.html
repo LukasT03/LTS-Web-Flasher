@@ -166,6 +166,14 @@
         color: #fff !important;
         opacity: 0.6;
       }
+      #connectBtn {
+        background-color: rgb(var(--text));
+        color: #000 !important;
+      }
+      #connectBtn:disabled {
+        background-color: rgba(234, 234, 234, 0.7);
+        color: #000 !important;
+      }
     }
 
     .note {
@@ -197,7 +205,7 @@
       width: 0%;
       border-radius: 0;
       background: #0E7AFE;
-      transition: width 0.15s ease-out;
+      transition: width 0.15s ease-out, background-color 0.35s ease;
     }
 
     .progress-header {
@@ -728,6 +736,10 @@ let lastErrorMessage = "";
 
       flashBtn.disabled = true;
       setProgress(0, isGermanRegion ? "Wird initialisiert, bitte warten..." : "Initializing, please wait...");
+      // Reset progress bar color to blue at start
+      if (progressBar) {
+        progressBar.style.background = "#0E7AFE";
+      }
 
       try {
         const loader = await ensureLoader();
@@ -762,6 +774,9 @@ let lastErrorMessage = "";
         await hardResetSerial(serialPort);
 
         setProgress(100, isGermanRegion ? "Erfolgreich installiert!" : "Flashed successfully!");
+        if (progressBar) {
+          progressBar.style.background = "rgb(52,199,89)";
+        }
       } catch (err) {
         console.error(err);
         const detailsText = err && err.message ? err.message : String(err);
