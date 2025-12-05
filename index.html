@@ -216,7 +216,7 @@
       width: 0%;
       border-radius: 0;
       background: #0E7AFE;
-      transition: width 0.15s ease-out, background-color 0.35s ease;
+      transition: width 0.35s ease-out, background-color 0.35s ease;
     }
 
     .progress-header {
@@ -278,6 +278,11 @@
       position: relative;
       overflow: hidden;
       margin-top: 0.8rem;
+    }
+
+    .segmented.is-disabled {
+      opacity: 0.6;
+      pointer-events: none;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -751,6 +756,9 @@ let lastErrorMessage = "";
       if (progressBar) {
         progressBar.style.background = "#0E7AFE";
       }
+      if (seg) {
+        seg.classList.add("is-disabled");
+      }
 
       try {
         const loader = await ensureLoader();
@@ -775,8 +783,8 @@ let lastErrorMessage = "";
           reportProgress(fileIndex, written, total) {
             const pct = total > 0 ? Math.round((written / total) * 100) : 0;
             const msg = isGermanRegion
-              ? `Firmware wird installiert... ${pct}%`
-              : `Flashing firmware... ${pct}%`;
+              ? "Firmware wird installiert..."
+              : "Flashing firmware...";
             setProgress(pct, msg);
           }
         });
@@ -788,6 +796,22 @@ let lastErrorMessage = "";
         if (progressBar) {
           progressBar.style.background = "rgb(52,199,89)";
         }
+        // Auto‑reset UI after success (5 seconds)
+        setTimeout(() => {
+          // Reset progress bar
+          if (progressBar) {
+            progressBar.style.width = "0%";
+            progressBar.style.background = "#0E7AFE";
+          }
+          // Reset percent
+          if (progressPercent) {
+            progressPercent.textContent = "0 %";
+          }
+          // Reset label
+          if (progressLabel) {
+            progressLabel.textContent = (isGermanRegion ? "Status: Bereit für Verbindung" : "Status: Ready for connection");
+          }
+        }, 5000);
       } catch (err) {
         console.error(err);
         const detailsText = err && err.message ? err.message : String(err);
@@ -838,6 +862,9 @@ let lastErrorMessage = "";
         }
         if (flashBtn) {
           flashBtn.disabled = true;
+        }
+        if (seg) {
+          seg.classList.remove("is-disabled");
         }
       }
     }
