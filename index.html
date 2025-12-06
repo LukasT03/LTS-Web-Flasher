@@ -639,6 +639,7 @@ let lastErrorMessage = "";
     }
 
     async function ensureLoader() {
+      // Wenn bereits initialisiert, einfach zurückgeben
       if (espLoader) return espLoader;
       if (!serialPort) {
         throw new Error(
@@ -659,6 +660,7 @@ let lastErrorMessage = "";
         );
       }
 
+      // Transport + Loader erstellen
       const transport = new TransportCtor(serialPort);
       loaderTransport = transport;
       espLoader = new LoaderCtor({
@@ -671,11 +673,12 @@ let lastErrorMessage = "";
         },
       });
 
-      // Ensure flashSize is set early to avoid "indexOf" errors inside esptool-js
+      // flashSize früh setzen, um esptool-js-Fehler zu vermeiden
       if (!espLoader.flashSize) {
         espLoader.flashSize = "4MB";
       }
 
+      // Loader initialisieren
       try {
         await espLoader.main();
       } catch (err) {
@@ -683,62 +686,47 @@ let lastErrorMessage = "";
         throw err;
       }
 
-      // After initialising the loader, verify that the connected chip
-      // matches the expected family for the selected board.
+      // --- DEBUG: Alle verfügbaren Chip-Infos ausgeben, aber nichts blockieren ---
       try {
-        const expectedFamily = CHIP_FAMILY[selectedValue];
-        const detectedRaw =
-          (espLoader && (espLoader.chipFamily || espLoader.chipName)) || "";
-        const detectedFamily = String(detectedRaw).toUpperCase();
+        const detectedFamilyRaw =
+          espLoader && (espLoader.chipFamily || espLoader.chipName);
+        const detectedFamily = String(detectedFamilyRaw || "").toUpperCase();
 
-        console.log("LTS Web Flasher chip check:", {
+        // Versuche zusätzliche Infos aus dem Loader zu holen
+        let chipDescription = null;
+        try {
+          if (espLoader && typeof espLoader.get_chip_description === "function") {
+            chipDescription = await espLoader.get_chip_description();
+          }
+        } catch (descErr) {
+          console.warn("get_chip_description() failed", descErr);
+        }
+
+        let chipFeatures = null;
+        try {
+          if (espLoader && typeof espLoader.get_chip_features === "function") {
+            chipFeatures = await espLoader.get_chip_features();
+          }
+        } catch (featErr) {
+          console.warn("get_chip_features() failed", featErr);
+        }
+
+        const debugInfo = {
           selectedValue,
-          expectedFamily,
-          detectedRaw,
-          detectedFamily
-        });
+          expectedFamilyFromMap: CHIP_FAMILY[selectedValue],
+          chipFamily: espLoader && espLoader.chipFamily,
+          chipName: espLoader && espLoader.chipName,
+          flashSize: espLoader && espLoader.flashSize,
+          chipId: espLoader && espLoader.chipId,
+          chipDescription,
+          chipFeatures
+        };
 
-        // Derive simple flags for S3 vs. normal ESP32.
-        const isDetectedS3 =
-          detectedFamily.includes("S3");
-        const isDetectedPlainESP32 =
-          detectedFamily === "ESP32" ||
-          (detectedFamily.includes("ESP32") &&
-            !detectedFamily.includes("S2") &&
-            !detectedFamily.includes("S3") &&
-            !detectedFamily.includes("C3"));
-
-        // If we selected Control Board (ESP32-S3) but the chip is clearly
-        // a non-S3 ESP32, block the flash.
-        if (selectedValue === "v4") {
-          if (!detectedFamily) {
-            const msg = isGermanRegion
-              ? "Der angeschlossene Chip konnte nicht eindeutig als LTS Control Board erkannt werden. Bitte überprüfe, ob das richtige Board angeschlossen ist."
-              : "The connected chip could not be reliably detected as an LTS Control Board. Please verify that the correct board is connected.";
-            throw new Error(msg);
-          }
-          if (!isDetectedS3) {
-            const msg = isGermanRegion
-              ? `Das ausgewählte Board (Control Board, ESP32-S3) passt nicht zum angeschlossenen Chip (${detectedFamily || "unbekannt"}). Bitte wähle im Menü das passende Board aus.`
-              : `The selected board (Control Board, ESP32-S3) does not match the connected chip (${detectedFamily || "unknown"}). Please choose the correct board in the menu.`;
-            throw new Error(msg);
-          }
-        }
-
-        // Optional: if we selected the plain ESP32 profile but the chip
-        // looks like an S3, also block to avoid flashing the wrong firmware.
-        if (selectedValue === "dev" && isDetectedS3) {
-          const msg = isGermanRegion
-            ? `Das ausgewählte Board (ESP32) passt nicht zum angeschlossenen Chip (${detectedFamily || "unbekannt"}). Bitte wähle im Menü das passende Board aus.`
-            : `The selected board (ESP32) does not match the connected chip (${detectedFamily || "unknown"}). Please choose the correct board in the menu.`;
-          throw new Error(msg);
-        }
-
-        // If we reached here, we consider the combination valid enough.
-      } catch (chipErr) {
-        console.error("Chip-family mismatch or detection error", chipErr);
-        throw chipErr;
+        console.log("LTS Web Flasher – CHIP DEBUG", debugInfo);
+      } catch (debugErr) {
+        console.error("Chip debug logging failed", debugErr);
       }
+      // --- Ende Debug-Block ---
 
       return espLoader;
     }
