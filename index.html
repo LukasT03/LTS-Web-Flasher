@@ -686,45 +686,83 @@ let lastErrorMessage = "";
         throw err;
       }
 
-      // --- DEBUG: Alle verfügbaren Chip-Infos ausgeben, aber nichts blockieren ---
+      // --- DEBUG: Alle verfügbaren Chip-Infos ausgeben ---
       try {
+        // Primär über das ROM-Objekt gehen – so macht es auch esp-web-tools.
+        const chipRomName =
+          espLoader &&
+          espLoader.chip &&
+          espLoader.chip.CHIP_NAME
+            ? String(espLoader.chip.CHIP_NAME)
+            : null;
+
+        // Fallback auf eventuell vorhandene Felder aus älteren esptool-js-Versionen
         const detectedFamilyRaw =
-          espLoader && (espLoader.chipFamily || espLoader.chipName);
+          chipRomName ||
+          (espLoader && (espLoader.chipFamily || espLoader.chipName));
         const detectedFamily = String(detectedFamilyRaw || "").toUpperCase();
 
-        // Versuche zusätzliche Infos aus dem Loader zu holen
+        // Versuche zusätzliche Infos aus dem Loader/ROM zu holen (nur für Debug)
         let chipDescription = null;
         try {
-          if (espLoader && typeof espLoader.get_chip_description === "function") {
-            chipDescription = await espLoader.get_chip_description();
+          if (
+            espLoader &&
+            espLoader.chip &&
+            typeof espLoader.chip.getChipDescription === "function"
+          ) {
+            chipDescription = await espLoader.chip.getChipDescription(espLoader);
           }
         } catch (descErr) {
-          console.warn("get_chip_description() failed", descErr);
+          console.warn("getChipDescription() failed", descErr);
         }
 
         let chipFeatures = null;
         try {
-          if (espLoader && typeof espLoader.get_chip_features === "function") {
-            chipFeatures = await espLoader.get_chip_features();
+          if (
+            espLoader &&
+            espLoader.chip &&
+            typeof espLoader.chip.getChipFeatures === "function"
+          ) {
+            chipFeatures = await espLoader.chip.getChipFeatures(espLoader);
           }
         } catch (featErr) {
-          console.warn("get_chip_features() failed", featErr);
+          console.warn("getChipFeatures() failed", featErr);
         }
 
         const debugInfo = {
           selectedValue,
           expectedFamilyFromMap: CHIP_FAMILY[selectedValue],
+          chipRomName,
           chipFamily: espLoader && espLoader.chipFamily,
           chipName: espLoader && espLoader.chipName,
           flashSize: espLoader && espLoader.flashSize,
           chipId: espLoader && espLoader.chipId,
           chipDescription,
-          chipFeatures
+          chipFeatures,
+          detectedFamily,
         };
 
         console.log("LTS Web Flasher – CHIP DEBUG", debugInfo);
+
+        // Einfache, einseitige Sicherheitslogik:
+        // Wenn eindeutig ein normaler ESP32 erkannt wird, aber das Control Board (v4, ESP32-S3)
+        // ausgewählt ist, brechen wir ab. Wenn die Erkennung leer/unklar ist (wie bei deinem S3),
+        // wird NICHT blockiert.
+        const isDetectedPlainESP32 =
+          detectedFamily === "ESP32" ||
+          (detectedFamily.includes("ESP32") &&
+            !detectedFamily.includes("S2") &&
+            !detectedFamily.includes("S3") &&
+            !detectedFamily.includes("C3"));
+
+        if (selectedValue === "v4" && isDetectedPlainESP32) {
+          const msg = isGermanRegion
+            ? `Das ausgewählte Board (Control Board, ESP32-S3) passt nicht zum angeschlossenen Chip (${detectedFamily || "unbekannt"}). Bitte wähle im Menü das passende Board aus.`
+            : `The selected board (Control Board, ESP32-S3) does not match the connected chip (${detectedFamily || "unknown"}). Please choose the correct board in the menu.`;
+          throw new Error(msg);
+        }
       } catch (debugErr) {
-        console.error("Chip debug logging failed", debugErr);
+        console.error("Chip debug logging or safety check failed", debugErr);
       }
       // --- Ende Debug-Block ---
 
