@@ -156,10 +156,6 @@
       opacity: 0.6;
     }
 
-    #connectBtn {
-      transition: opacity 0.35s ease;
-    }
-
     @media (prefers-color-scheme: dark) {
       #flashBtn {
         background-color: #0E7AFE;
@@ -639,7 +635,6 @@ let lastErrorMessage = "";
     }
 
     async function ensureLoader() {
-      // Wenn bereits initialisiert, einfach zurückgeben
       if (espLoader) return espLoader;
       if (!serialPort) {
         throw new Error(
@@ -660,7 +655,6 @@ let lastErrorMessage = "";
         );
       }
 
-      // Transport + Loader erstellen
       const transport = new TransportCtor(serialPort);
       loaderTransport = transport;
       espLoader = new LoaderCtor({
@@ -673,12 +667,11 @@ let lastErrorMessage = "";
         },
       });
 
-      // flashSize früh setzen, um esptool-js-Fehler zu vermeiden
+      // Ensure flashSize is set early to avoid "indexOf" errors inside esptool-js
       if (!espLoader.flashSize) {
         espLoader.flashSize = "4MB";
       }
 
-      // Loader initialisieren
       try {
         await espLoader.main();
       } catch (err) {
@@ -686,85 +679,49 @@ let lastErrorMessage = "";
         throw err;
       }
 
-      // --- DEBUG: Alle verfügbaren Chip-Infos ausgeben ---
+      // Nach der Initialisierung: einfachen Chip-Typ bestimmen.
+      let chipNameUpper = "";
       try {
-        // Primär über das ROM-Objekt gehen – so macht es auch esp-web-tools.
-        const chipRomName =
-          espLoader &&
-          espLoader.chip &&
-          espLoader.chip.CHIP_NAME
-            ? String(espLoader.chip.CHIP_NAME)
-            : null;
-
-        // Fallback auf eventuell vorhandene Felder aus älteren esptool-js-Versionen
-        const detectedFamilyRaw =
-          chipRomName ||
-          (espLoader && (espLoader.chipFamily || espLoader.chipName));
-        const detectedFamily = String(detectedFamilyRaw || "").toUpperCase();
-
-        // Versuche zusätzliche Infos aus dem Loader/ROM zu holen (nur für Debug)
-        let chipDescription = null;
-        try {
-          if (
-            espLoader &&
-            espLoader.chip &&
-            typeof espLoader.chip.getChipDescription === "function"
-          ) {
-            chipDescription = await espLoader.chip.getChipDescription(espLoader);
-          }
-        } catch (descErr) {
-          console.warn("getChipDescription() failed", descErr);
+        if (espLoader && espLoader.chip && espLoader.chip.CHIP_NAME) {
+          chipNameUpper = String(espLoader.chip.CHIP_NAME).toUpperCase();
+        } else if (espLoader && (espLoader.chipFamily || espLoader.chipName)) {
+          chipNameUpper = String(
+            espLoader.chipFamily || espLoader.chipName
+          ).toUpperCase();
         }
-
-        let chipFeatures = null;
-        try {
-          if (
-            espLoader &&
-            espLoader.chip &&
-            typeof espLoader.chip.getChipFeatures === "function"
-          ) {
-            chipFeatures = await espLoader.chip.getChipFeatures(espLoader);
-          }
-        } catch (featErr) {
-          console.warn("getChipFeatures() failed", featErr);
-        }
-
-        const debugInfo = {
-          selectedValue,
-          expectedFamilyFromMap: CHIP_FAMILY[selectedValue],
-          chipRomName,
-          chipFamily: espLoader && espLoader.chipFamily,
-          chipName: espLoader && espLoader.chipName,
-          flashSize: espLoader && espLoader.flashSize,
-          chipId: espLoader && espLoader.chipId,
-          chipDescription,
-          chipFeatures,
-          detectedFamily,
-        };
-
-        console.log("LTS Web Flasher – CHIP DEBUG", debugInfo);
-
-        // Einfache, einseitige Sicherheitslogik:
-        // Wenn eindeutig ein normaler ESP32 erkannt wird, aber das Control Board (v4, ESP32-S3)
-        // ausgewählt ist, brechen wir ab. Wenn die Erkennung leer/unklar ist (wie bei deinem S3),
-        // wird NICHT blockiert.
-        const isDetectedPlainESP32 =
-          detectedFamily === "ESP32" ||
-          (detectedFamily.includes("ESP32") &&
-            !detectedFamily.includes("S2") &&
-            !detectedFamily.includes("S3") &&
-            !detectedFamily.includes("C3"));
-
-        if (selectedValue === "v4" && isDetectedPlainESP32) {
-          const msg = isGermanRegion
-            ? `Das ausgewählte Board (Control Board, ESP32-S3) passt nicht zum angeschlossenen Chip (${detectedFamily || "unbekannt"}). Bitte wähle im Menü das passende Board aus.`
-            : `The selected board (Control Board, ESP32-S3) does not match the connected chip (${detectedFamily || "unknown"}). Please choose the correct board in the menu.`;
-          throw new Error(msg);
-        }
-      } catch (debugErr) {
-        console.error("Chip debug logging or safety check failed", debugErr);
+      } catch (e) {
+        console.warn("Chip name detection failed", e);
       }
-      // --- Ende Debug-Block ---
+
+      const isPlainEsp32 =
+        chipNameUpper === "ESP32" ||
+        (chipNameUpper.includes("ESP32") &&
+          !chipNameUpper.includes("S2") &&
+          !chipNameUpper.includes("S3") &&
+          !chipNameUpper.includes("C3"));
+
+      console.log("LTS Web Flasher – simple chip check", {
+        selectedValue,
+        chipNameUpper,
+        isPlainEsp32,
+      });
+
+      // Fall 1: Normaler ESP32 erkannt, aber Control Board (ESP32-S3) ausgewählt -> blockieren
+      if (selectedValue === "v4" && isPlainEsp32) {
+        const msg = isGermanRegion
+          ? "Das ausgewählte Board (Control Board, ESP32-S3) passt nicht zum angeschlossenen Chip (ESP32). Bitte wähle im Menü das passende Board aus."
+          : "The selected board (Control Board, ESP32-S3) does not match the connected chip (ESP32). Please choose the correct board in the menu.";
+        throw new Error(msg);
+      }
+
+      // Fall 2: Normaler ESP32 NICHT erkannt, aber ESP32-Profil ausgewählt -> blockieren
+      // (d.h. es ist entweder ein anderer Chip, z.B. S3, oder die Erkennung ist leer/unklar)
+      if (selectedValue === "dev" && !isPlainEsp32) {
+        const msg = isGermanRegion
+          ? "Das ausgewählte Board (ESP32) passt nicht zum angeschlossenen Chip. Bitte wähle im Menü das passende Board aus."
+          : "The selected board (ESP32) does not match the connected chip. Please choose the correct board in the menu.";
+        throw new Error(msg);
+      }
 
       return espLoader;
     }
