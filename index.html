@@ -687,19 +687,50 @@ let lastErrorMessage = "";
           (espLoader && (espLoader.chipFamily || espLoader.chipName)) || "";
         const detectedFamily = String(detectedRaw).toUpperCase();
 
-        if (expectedFamily && detectedFamily) {
-          const expectedUpper = String(expectedFamily).toUpperCase();
-          if (detectedFamily !== expectedUpper) {
-            const boardLabel =
-              selectedValue === "v4"
-                ? (isGermanRegion ? "Control Board, ESP32-S3" : "Control Board, ESP32-S3")
-                : "ESP32";
+        console.log("LTS Web Flasher chip check:", {
+          selectedValue,
+          expectedFamily,
+          detectedRaw,
+          detectedFamily
+        });
+
+        // Derive simple flags for S3 vs. normal ESP32.
+        const isDetectedS3 =
+          detectedFamily.includes("S3");
+        const isDetectedPlainESP32 =
+          detectedFamily === "ESP32" ||
+          (detectedFamily.includes("ESP32") &&
+            !detectedFamily.includes("S2") &&
+            !detectedFamily.includes("S3") &&
+            !detectedFamily.includes("C3"));
+
+        // If we selected Control Board (ESP32-S3) but the chip is clearly
+        // a non-S3 ESP32, block the flash.
+        if (selectedValue === "v4") {
+          if (!detectedFamily) {
             const msg = isGermanRegion
-              ? `Das ausgewählte Board (${boardLabel}) passt nicht zum angeschlossenen Chip (${detectedFamily}). Bitte wähle im Menü das passende Board aus.`
-              : `The selected board (${boardLabel}) does not match the connected chip (${detectedFamily}). Please choose the correct board in the menu.`;
+              ? "Der angeschlossene Chip konnte nicht eindeutig als LTS Control Board erkannt werden. Bitte überprüfe, ob das richtige Board angeschlossen ist."
+              : "The connected chip could not be reliably detected as an LTS Control Board. Please verify that the correct board is connected.";
+            throw new Error(msg);
+          }
+          if (!isDetectedS3) {
+            const msg = isGermanRegion
+              ? `Das ausgewählte Board (Control Board, ESP32-S3) passt nicht zum angeschlossenen Chip (${detectedFamily || "unbekannt"}). Bitte wähle im Menü das passende Board aus.`
+              : `The selected board (Control Board, ESP32-S3) does not match the connected chip (${detectedFamily || "unknown"}). Please choose the correct board in the menu.`;
             throw new Error(msg);
           }
         }
+
+        // Optional: if we selected the plain ESP32 profile but the chip
+        // looks like an S3, also block to avoid flashing the wrong firmware.
+        if (selectedValue === "dev" && isDetectedS3) {
+          const msg = isGermanRegion
+            ? `Das ausgewählte Board (ESP32) passt nicht zum angeschlossenen Chip (${detectedFamily || "unbekannt"}). Bitte wähle im Menü das passende Board aus.`
+            : `The selected board (ESP32) does not match the connected chip (${detectedFamily || "unknown"}). Please choose the correct board in the menu.`;
+          throw new Error(msg);
+        }
+
+        // If we reached here, we consider the combination valid enough.
       } catch (chipErr) {
         console.error("Chip-family mismatch or detection error", chipErr);
         throw chipErr;
