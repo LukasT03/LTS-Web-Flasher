@@ -267,7 +267,6 @@
       }
     }
 
-    /* Segmented control */
     .segmented {
       display: flex;
       padding: 0.2rem;
@@ -440,7 +439,6 @@
 
   <script type="module">
     import * as esptoolBundle from "https://unpkg.com/esptool-js@0.5.6/bundle.js";
-    // Expose constructors and reset helper on window so the rest of the page (classic script) can use them
     window.ESPLoader = esptoolBundle.ESPLoader;
     window.ESPLoaderTransport = esptoolBundle.Transport;
     window.ESPHardReset = esptoolBundle.hardReset || null;
@@ -450,7 +448,6 @@
     window.addEventListener("load", () => {
       const ov = document.getElementById("pageFadeOverlay");
       if (ov) {
-        // 250 ms fully visible, then 500 ms fade-out
         setTimeout(() => {
           ov.style.opacity = "0";
           setTimeout(() => ov.remove(), 1000);
@@ -473,7 +470,6 @@
         return;
       }
       try {
-        // Simple reset pattern over DTR/RTS:
         // pulse the lines so the USB-UART toggles EN/BOOT if wired accordingly.
         await port.setSignals({
           dataTerminalReady: false,
@@ -544,7 +540,6 @@
 
     if (!supportsWebSerial) {
       if (connectBtn) connectBtn.classList.add("hidden");
-      // Keep the Install/Flash button visible, but make sure it cannot be used.
       if (flashBtn) {
         flashBtn.classList.remove("hidden");
         flashBtn.disabled = true;
@@ -561,7 +556,6 @@
       if (connectBtn) connectBtn.classList.remove("hidden");
       if (flashBtn) {
         flashBtn.classList.remove("hidden");
-        // Initial state: disabled until a board is connected
         flashBtn.disabled = true;
       }
       if (unsupportedEl) unsupportedEl.classList.add("hidden");
@@ -679,7 +673,6 @@ let lastErrorMessage = "";
         throw err;
       }
 
-      // Nach der Initialisierung: einfachen Chip-Typ bestimmen.
       let chipNameUpper = "";
       try {
         if (espLoader && espLoader.chip && espLoader.chip.CHIP_NAME) {
@@ -706,7 +699,6 @@ let lastErrorMessage = "";
         isPlainEsp32,
       });
 
-      // Fall 1: Normaler ESP32 erkannt, aber Control Board (ESP32-S3) ausgewählt -> blockieren
       if (selectedValue === "v4" && isPlainEsp32) {
         const msg = isGermanRegion
           ? "Das ausgewählte Board (Control Board, ESP32-S3) passt nicht zum angeschlossenen Chip (ESP32). Bitte wähle im Menü das passende Board aus."
@@ -714,8 +706,6 @@ let lastErrorMessage = "";
         throw new Error(msg);
       }
 
-      // Fall 2: Normaler ESP32 NICHT erkannt, aber ESP32-Profil ausgewählt -> blockieren
-      // (d.h. es ist entweder ein anderer Chip, z.B. S3, oder die Erkennung ist leer/unklar)
       if (selectedValue === "dev" && !isPlainEsp32) {
         const msg = isGermanRegion
           ? "Das ausgewählte Board (ESP32) passt nicht zum angeschlossenen Chip. Bitte wähle im Menü das passende Board aus."
@@ -731,11 +721,9 @@ let lastErrorMessage = "";
       try {
         setProgress(0, isGermanRegion ? "Wähle einen seriellen Port" : "Please choose a serial port");
         const port = await navigator.serial.requestPort();
-        // Do not open here; esptool-js / Transport will handle opening the port.
         serialPort = port;
 
         if (connectBtn) {
-          connectBtn.textContent = isGermanRegion ? "Verbunden" : "Connected";
           connectBtn.disabled = true;
         }
         if (flashBtn) {
@@ -751,7 +739,6 @@ let lastErrorMessage = "";
         const genericText = isGermanRegion ? "Fehler beim Verbinden!" : "Failed to connect!";
         lastErrorMessage = detailsText;
 
-        // Set generic status and 0 %
         setProgress(0, genericText);
 
         if (progressLabel) {
@@ -832,16 +819,13 @@ let lastErrorMessage = "";
         }
         // Auto‑reset UI after success (5 seconds)
         setTimeout(() => {
-          // Reset progress bar
           if (progressBar) {
             progressBar.style.width = "0%";
             progressBar.style.background = "#0E7AFE";
           }
-          // Reset percent
           if (progressPercent) {
             progressPercent.textContent = "0 %";
           }
-          // Reset label
           if (progressLabel) {
             progressLabel.textContent = (isGermanRegion ? "Status: Bereit für Verbindung" : "Status: Ready for connection");
           }
@@ -862,7 +846,6 @@ let lastErrorMessage = "";
 
         lastErrorMessage = detailsText;
 
-        // Set generic status and 0 %
         setProgress(0, genericText);
 
         if (progressLabel) {
@@ -879,7 +862,6 @@ let lastErrorMessage = "";
         }
       } finally {
         // Always disconnect/close the serial port and reset local state
-        // so the user can reconnect cleanly on the next run.
         try {
           if (loaderTransport && typeof loaderTransport.disconnect === "function") {
             await loaderTransport.disconnect();
@@ -918,7 +900,6 @@ let lastErrorMessage = "";
       });
     }
 
-    // Load firmware version label only
     async function loadFirmwareVersion() {
       const el = document.getElementById("fwVersionValue");
       try {
