@@ -595,6 +595,16 @@
       }
       if (unsupportedEl) unsupportedEl.classList.remove("hidden");
 
+      // Safari + Desktop check and append text
+      const ua = navigator.userAgent;
+      const isSafari = ua.includes("Safari") && !ua.includes("Chrome") && !ua.includes("Chromium");
+      const isDesktopSafari = isSafari && window.innerWidth > 1024;
+      if (unsupportedEl && isDesktopSafari) {
+        unsupportedEl.innerHTML +=
+          isGermanRegion
+            ? '<br><br>Du nutzt einen Mac? Lade das LTS Utility Programm <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">hier</a> herunter.'
+            : '<br><br>Using a Mac? Download the LTS Utility program <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">here</a>.';
+      }
       // Update status text to indicate lack of support
       if (progressLabel) {
         progressLabel.textContent = isGermanRegion
