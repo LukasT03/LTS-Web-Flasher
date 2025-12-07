@@ -196,7 +196,7 @@
 
     .progress-wrapper {
       font-size: 1.1rem;
-      margin-top: -0.12rem;
+      margin-top: -0.09rem;
       padding-right: 0.27rem;
     }
     .progress-label {
@@ -494,7 +494,7 @@
       <div class="flash-col-progress">
         <div id="progressWrapper" class="progress-wrapper">
           <div class="progress-header">
-            <div id="progressLabel" class="progress-label">Status: Ready</div>
+            <div id="progressLabel" class="progress-label">Ready</div>
             <div id="progressPercent" class="progress-percent">0%</div>
           </div>
           <div class="progress-track">
@@ -602,7 +602,7 @@
     const progressPercent = document.getElementById("progressPercent");
 
     if (progressLabel) {
-      progressLabel.textContent = isGermanRegion ? "Status: Bereit für Verbindung" : "Status: Ready for connection";
+      progressLabel.textContent = isGermanRegion ? "Bereit für Verbindung" : "Ready for connection";
     }
     if (progressPercent) {
       progressPercent.textContent = "0 %";
@@ -641,11 +641,11 @@
       }
       if (unsupportedEl) unsupportedEl.classList.add("hidden");
 
-      // Reset status to ready when supported
+      // Reset label text to ready when supported
       if (progressLabel) {
         progressLabel.textContent = isGermanRegion
-          ? "Status: Bereit für Verbindung"
-          : "Status: Ready for connection";
+          ? "Bereit für Verbindung"
+          : "Ready for connection";
       }
     }
 
@@ -704,8 +704,7 @@ let lastErrorMessage = "";
       }
 
       if (labelText != null) {
-        const prefix = "Status: ";
-        progressLabel.textContent = prefix + labelText;
+        progressLabel.textContent = labelText;
       }
     }
 
@@ -908,7 +907,7 @@ let lastErrorMessage = "";
             progressPercent.textContent = "0 %";
           }
           if (progressLabel) {
-            progressLabel.textContent = (isGermanRegion ? "Status: Bereit für Verbindung" : "Status: Ready for connection");
+            progressLabel.textContent = (isGermanRegion ? "Bereit für Verbindung" : "Ready for connection");
           }
         }, 5000);
       } catch (err) {
