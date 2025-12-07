@@ -274,7 +274,18 @@
 
     @media (prefers-color-scheme: dark) {
       .flash-divider {
-        background: #d1d5db;
+        background: rgba(255,255,255,0.18);
+      }
+    }
+
+    .section-divider {
+      border: 0;
+      border-top: 1px solid #d1d5db;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .section-divider {
+        border-top-color: rgba(255,255,255,0.18);
       }
     }
 
@@ -455,7 +466,7 @@
       <li id="step3">Click the connect button and choose the correct COM port</li>
       <li id="step4">Press Flash to install the firmware</li>
     </ol>
-    <hr style="border:0; border-top:1px solid #d1d5db;">
+    <hr class="section-divider">
 
     <div id="boardSegment" class="segmented">
       <div class="seg-indicator"></div>
