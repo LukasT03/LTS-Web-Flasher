@@ -183,6 +183,17 @@
       text-align: center;
     }
 
+    #wbUnsupported a {
+      color: #ff8c28;
+      text-decoration: underline;
+    }
+
+    #wbUnsupported a:visited,
+    #wbUnsupported a:hover,
+    #wbUnsupported a:active {
+      color: #ff8c28;
+    }
+
     .progress-wrapper {
       font-size: 1rem;
       margin-top: 0rem;
@@ -507,7 +518,7 @@
     const langCandidates = (navigator.languages && navigator.languages.length)
       ? navigator.languages
       : [userLang];
-    const isGermanRegion = langCandidates.some(l => /^de-(DE|AT)$/i.test(l));
+    const isGermanRegion = langCandidates.some(l => /^de(-|$)/i.test(l));
 
     function sleep(ms) {
       return new Promise((resolve) => setTimeout(resolve, ms));
@@ -602,7 +613,7 @@
       if (unsupportedEl && isDesktopSafari) {
         unsupportedEl.innerHTML +=
           isGermanRegion
-            ? '<br><br>Du nutzt einen Mac? Lade das LTS Utility Programm <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">hier</a> herunter.'
+            ? '<br><br>Du nutzt macOS? Lade das LTS Utility Programm <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">hier</a> herunter.'
             : '<br><br>Using a Mac? Download the LTS Utility program <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">here</a>.';
       }
       // Update status text to indicate lack of support
