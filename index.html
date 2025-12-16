@@ -546,7 +546,12 @@
         return;
       }
       try {
-        // pulse the lines so the USB-UART toggles EN/BOOT if wired accordingly.
+        if (!port.writable || !port.readable) {
+          await port.open({ baudRate: 115200 });
+          await sleep(120);
+        }
+      } catch {}
+      try {
         await port.setSignals({
           dataTerminalReady: false,
           requestToSend: true,
@@ -979,6 +984,12 @@ let lastErrorMessage = "";
         espLoader = null;
         loaderTransport = null;
 
+        try {
+          if (!serialPort.readable || !serialPort.writable) {
+            await serialPort.open({ baudRate: 115200 });
+            await sleep(120);
+          }
+        } catch {}
         // Try to hard-reset the board so it exits the bootloader and runs the new firmware.
         await hardResetSerial(serialPort);
         await sleep(2200);
