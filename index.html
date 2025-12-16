@@ -542,28 +542,40 @@
     }
 
     async function hardResetSerial(port) {
-      if (!port || !port.setSignals) {
-        return;
-      }
-      try {
-        if (!port.writable || !port.readable) {
-          await port.open({ baudRate: 115200 });
-          await sleep(120);
-        }
-      } catch {}
-      try {
-        await port.setSignals({
-          dataTerminalReady: false,
-          requestToSend: true,
-        });
-        await sleep(100);
+      if (!port || !port.setSignals) return;
 
-        await port.setSignals({
-          dataTerminalReady: false,
-          requestToSend: false,
-        });
-        await sleep(100);
+      const pulse = async () => {
+        await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+        await sleep(120);
+        await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+        await sleep(120);
+      };
+
+      const tryOpen = async () => {
+        try {
+          if (!port.readable || !port.writable) {
+            await port.open({ baudRate: 115200 });
+            await sleep(150);
+          }
+        } catch {}
+      };
+
+      await tryOpen();
+
+      try {
+        await pulse();
+        return;
       } catch (err) {
+        if (err && err.name === "InvalidStateError") {
+          await tryOpen();
+          try {
+            await pulse();
+            return;
+          } catch (err2) {
+            console.error("Hard reset via Web Serial failed", err2);
+            return;
+          }
+        }
         console.error("Hard reset via Web Serial failed", err);
       }
     }
@@ -984,12 +996,6 @@ let lastErrorMessage = "";
         espLoader = null;
         loaderTransport = null;
 
-        try {
-          if (!serialPort.readable || !serialPort.writable) {
-            await serialPort.open({ baudRate: 115200 });
-            await sleep(120);
-          }
-        } catch {}
         // Try to hard-reset the board so it exits the bootloader and runs the new firmware.
         await hardResetSerial(serialPort);
         await sleep(2200);
