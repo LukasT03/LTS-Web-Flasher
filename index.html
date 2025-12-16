@@ -707,6 +707,14 @@
       varIndicator.style.transform = `translateX(${index * 100}%)`;
     }
 
+    function applyBoardSelection(val) {
+      if (val !== "dev" && val !== "v4") return;
+      selectedValue = val;
+      segButtons.forEach(b => b.classList.toggle("is-selected", b.dataset.value === selectedValue));
+      updateBoardIndicator();
+      try { localStorage.setItem("lts_respooler_board", selectedValue); } catch {}
+    }
+
     try {
       const saved = localStorage.getItem("lts_respooler_variant");
       if (saved === "v4" || saved === "pro") selectedVariant = saved;
@@ -871,18 +879,9 @@ let lastErrorMessage = "";
         isPlainEsp32,
       });
 
-      if (selectedValue === "v4" && isPlainEsp32) {
-        const msg = isGermanRegion
-          ? "Das ausgewählte Board (Control Board, ESP32-S3) passt nicht zum angeschlossenen Chip (ESP32). Bitte wähle im Menü das passende Board aus."
-          : "The selected board (Control Board, ESP32-S3) does not match the connected chip (ESP32). Please choose the correct board in the menu.";
-        throw new Error(msg);
-      }
-
-      if (selectedValue === "dev" && !isPlainEsp32) {
-        const msg = isGermanRegion
-          ? "Das ausgewählte Board (ESP32) passt nicht zum angeschlossenen Chip. Bitte wähle im Menü das passende Board aus."
-          : "The selected board (ESP32) does not match the connected chip. Please choose the correct board in the menu.";
-        throw new Error(msg);
+      const autoSelected = isPlainEsp32 ? "dev" : "v4";
+      if (autoSelected !== selectedValue) {
+        applyBoardSelection(autoSelected);
       }
 
       return espLoader;
@@ -898,6 +897,22 @@ let lastErrorMessage = "";
         if (connectBtn) {
           connectBtn.disabled = true;
         }
+
+        try {
+          setProgress(0, isGermanRegion ? "Ermittle Board…" : "Detecting board…");
+          await ensureLoader();
+        } catch (e) {
+          console.error(e);
+        } finally {
+          espLoader = null;
+          try {
+            if (loaderTransport && typeof loaderTransport.disconnect === "function") {
+              await loaderTransport.disconnect();
+            }
+          } catch {}
+          loaderTransport = null;
+        }
+
         if (flashBtn) {
           flashBtn.disabled = false;
         }
