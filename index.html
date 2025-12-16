@@ -951,7 +951,7 @@ let lastErrorMessage = "";
 
         // Try to hard-reset the board so it exits the bootloader and runs the new firmware.
         await hardResetSerial(serialPort);
-        await sleep(600);
+        await sleep(2200);
         await sendVariantOverSerial();
         await sleep(150);
         await hardResetSerial(serialPort);
