@@ -179,7 +179,7 @@
     .note {
       color: #ff8c28;
       font-size: 1.1rem;
-      margin-top: 0.4rem;
+      margin-top: 0.55rem;
       text-align: center;
     }
 
@@ -984,6 +984,8 @@ let lastErrorMessage = "";
         loaderTransport = null;
 
         await sleep(500);
+
+        setProgress(100, isGermanRegion ? "Konfiguration wird übertragen…" : "Applying configuration…");
 
         await hardResetSerial(serialPort);
         await sleep(500);
