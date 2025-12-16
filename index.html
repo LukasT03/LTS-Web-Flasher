@@ -468,14 +468,20 @@
     </ol>
     <hr class="section-divider">
 
+    <div style="margin-top:0.8rem;">
+      <button type="button" class="lts-btn" id="connectBtn">Connect Board</button>
+    </div>
+
     <div id="boardSegment" class="segmented">
       <div class="seg-indicator"></div>
       <button class="seg-btn is-selected" data-value="dev">ESP32</button>
       <button class="seg-btn" data-value="v4">Control Board</button>
     </div>
 
-    <div style="margin-top:0.8rem;">
-      <button type="button" class="lts-btn" id="connectBtn">Connect Board</button>
+    <div id="variantSegment" class="segmented" style="margin-top:0.65rem;">
+      <div class="seg-indicator"></div>
+      <button class="seg-btn is-selected" data-value="v4">Respooler V4</button>
+      <button class="seg-btn" data-value="pro">Respooler Pro</button>
     </div>
 
     <div id="wbUnsupported" class="note hidden">
@@ -662,32 +668,60 @@
 
     let latestVersion = "0.0.0";
     let selectedValue = "dev";
+    let selectedVariant = "v4";
 
     const seg = document.getElementById("boardSegment");
     const segIndicator = seg ? seg.querySelector(".seg-indicator") : null;
     const segButtons = seg ? Array.from(seg.querySelectorAll("button[data-value]")) : [];
 
-    function updateIndicator() {
+    const varSeg = document.getElementById("variantSegment");
+    const varIndicator = varSeg ? varSeg.querySelector(".seg-indicator") : null;
+    const varButtons = varSeg ? Array.from(varSeg.querySelectorAll("button[data-value]")) : [];
+
+    function updateBoardIndicator() {
       if (!segIndicator) return;
       const index = selectedValue === "dev" ? 0 : 1;
-      const translate = index * 100;
-      segIndicator.style.transform = `translateX(${translate}%)`;
+      segIndicator.style.transform = `translateX(${index * 100}%)`;
     }
+
+    function updateVariantIndicator() {
+      if (!varIndicator) return;
+      const index = selectedVariant === "v4" ? 0 : 1;
+      varIndicator.style.transform = `translateX(${index * 100}%)`;
+    }
+
+    try {
+      const saved = localStorage.getItem("lts_respooler_variant");
+      if (saved === "v4" || saved === "pro") selectedVariant = saved;
+    } catch {}
+
+    segButtons.forEach(b => b.classList.toggle("is-selected", b.dataset.value === selectedValue));
+    varButtons.forEach(b => b.classList.toggle("is-selected", b.dataset.value === selectedVariant));
+    updateBoardIndicator();
+    updateVariantIndicator();
 
     segButtons.forEach(btn => {
       btn.addEventListener("click", () => {
         const val = btn.dataset.value;
         if (val && val !== selectedValue) {
           selectedValue = val;
-          segButtons.forEach(b =>
-            b.classList.toggle("is-selected", b === btn)
-          );
-          updateIndicator();
+          segButtons.forEach(b => b.classList.toggle("is-selected", b === btn));
+          updateBoardIndicator();
         }
       });
     });
 
-    updateIndicator();
+    varButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const val = btn.dataset.value;
+        if (val && val !== selectedVariant) {
+          selectedVariant = val;
+          varButtons.forEach(b => b.classList.toggle("is-selected", b === btn));
+          updateVariantIndicator();
+          try { localStorage.setItem("lts_respooler_variant", selectedVariant); } catch {}
+        }
+      });
+    });
 
 let serialPort = null;
 let espLoader = null;
@@ -705,6 +739,28 @@ let lastErrorMessage = "";
 
       if (labelText != null) {
         progressLabel.textContent = labelText;
+      }
+    }
+
+    async function sendVariantOverSerial() {
+      if (!serialPort) return;
+      const payload = selectedVariant === "pro"
+        ? '{"SET":{"VAR":"PRO"}}\n'
+        : '{"SET":{"VAR":"STD"}}\n';
+
+      try {
+        if (!serialPort.writable || !serialPort.readable) {
+          await serialPort.open({ baudRate: 115200 });
+        }
+      } catch {}
+
+      try {
+        const writer = serialPort.writable.getWriter();
+        const data = new TextEncoder().encode(payload);
+        await writer.write(data);
+        writer.releaseLock();
+      } catch (e) {
+        console.error("Failed to send VAR over serial", e);
       }
     }
 
@@ -860,6 +916,9 @@ let lastErrorMessage = "";
       if (seg) {
         seg.classList.add("is-disabled");
       }
+      if (varSeg) {
+        varSeg.classList.add("is-disabled");
+      }
 
       try {
         const loader = await ensureLoader();
@@ -891,6 +950,10 @@ let lastErrorMessage = "";
         });
 
         // Try to hard-reset the board so it exits the bootloader and runs the new firmware.
+        await hardResetSerial(serialPort);
+        await sleep(600);
+        await sendVariantOverSerial();
+        await sleep(150);
         await hardResetSerial(serialPort);
 
         setProgress(100, isGermanRegion ? "Erfolgreich installiert!" : "Flashed successfully!");
@@ -964,6 +1027,9 @@ let lastErrorMessage = "";
         }
         if (seg) {
           seg.classList.remove("is-disabled");
+        }
+        if (varSeg) {
+          varSeg.classList.remove("is-disabled");
         }
       }
     }
