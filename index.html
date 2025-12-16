@@ -694,6 +694,10 @@
       const saved = localStorage.getItem("lts_respooler_variant");
       if (saved === "v4" || saved === "pro") selectedVariant = saved;
     } catch {}
+    try {
+      const savedBoard = localStorage.getItem("lts_respooler_board");
+      if (savedBoard === "dev" || savedBoard === "v4") selectedValue = savedBoard;
+    } catch {}
 
     segButtons.forEach(b => b.classList.toggle("is-selected", b.dataset.value === selectedValue));
     varButtons.forEach(b => b.classList.toggle("is-selected", b.dataset.value === selectedVariant));
@@ -707,6 +711,7 @@
           selectedValue = val;
           segButtons.forEach(b => b.classList.toggle("is-selected", b === btn));
           updateBoardIndicator();
+          try { localStorage.setItem("lts_respooler_board", selectedValue); } catch {}
         }
       });
     });
@@ -744,15 +749,27 @@ let lastErrorMessage = "";
 
     async function sendVariantOverSerial() {
       if (!serialPort) return;
+
       const payload = selectedVariant === "pro"
         ? '{"SET":{"VAR":"PRO"}}\n'
         : '{"SET":{"VAR":"STD"}}\n';
 
+      const start = performance.now();
+      while (performance.now() - start < 5000) {
+        try {
+          if (serialPort.writable) break;
+        } catch {}
+        await sleep(100);
+      }
+
       try {
-        if (!serialPort.writable || !serialPort.readable) {
+        if (!serialPort.writable) {
           await serialPort.open({ baudRate: 115200 });
         }
-      } catch {}
+      } catch (e) {
+        console.error("Failed to open serial for VAR", e);
+        return;
+      }
 
       try {
         const writer = serialPort.writable.getWriter();
@@ -762,6 +779,8 @@ let lastErrorMessage = "";
       } catch (e) {
         console.error("Failed to send VAR over serial", e);
       }
+
+      await sleep(200);
     }
 
     async function ensureLoader() {
@@ -948,6 +967,17 @@ let lastErrorMessage = "";
             setProgress(pct, msg);
           }
         });
+
+        // Transport cleanup so esptool-js releases its locks before we write our JSON:
+        try {
+          if (loaderTransport && typeof loaderTransport.disconnect === "function") {
+            await loaderTransport.disconnect();
+          }
+        } catch (e) {
+          console.error("Failed to disconnect transport", e);
+        }
+        espLoader = null;
+        loaderTransport = null;
 
         // Try to hard-reset the board so it exits the bootloader and runs the new firmware.
         await hardResetSerial(serialPort);
