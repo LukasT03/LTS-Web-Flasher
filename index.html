@@ -996,13 +996,10 @@ let lastErrorMessage = "";
         espLoader = null;
         loaderTransport = null;
 
-        // FIX: Warte kurz, damit der Browser den Serial Port vollständig freigeben kann
         await sleep(500);
 
-        // Try to hard-reset the board so it exits the bootloader and runs the new firmware.
-        // Da wir gewartet haben, kann hardResetSerial den Port nun erfolgreich neu öffnen.
         await hardResetSerial(serialPort);
-        await sleep(2200);
+        await sleep(500);
         await sendVariantOverSerial();
         await sleep(150);
         await hardResetSerial(serialPort);
