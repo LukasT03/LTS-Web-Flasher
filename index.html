@@ -462,8 +462,8 @@
 
     <ol>
       <li id="step1">Connect your board to your computer via USB</li>
-      <li id="step2">Select the correct board version from the menu</li>
-      <li id="step3">Click the connect button and choose the correct COM port</li>
+      <li id="step2">Click the connect button and choose the correct COM port</li>
+      <li id="step3">Select your respooler variant from the menu</li>
       <li id="step4">Press Flash to install the firmware</li>
     </ol>
     <hr class="section-divider">
@@ -472,11 +472,6 @@
       <button type="button" class="lts-btn" id="connectBtn">Connect Board</button>
     </div>
 
-    <div id="boardSegment" class="segmented">
-      <div class="seg-indicator"></div>
-      <button class="seg-btn is-selected" data-value="dev">ESP32</button>
-      <button class="seg-btn" data-value="v4">Control Board</button>
-    </div>
 
     <div id="variantSegment" class="segmented" style="margin-top:0.65rem;">
       <div class="seg-indicator"></div>
@@ -589,8 +584,8 @@
       const step3El = document.getElementById("step3");
       const step4El = document.getElementById("step4");
       if (step1El) step1El.textContent = "Schließe dein Board per USB an deinen Computer an";
-      if (step2El) step2El.textContent = "Wähle die korrekte Board-Version im Menü aus";
-      if (step3El) step3El.textContent = "Drücke den Button zum Verbinden und wähle den korrekten COM-Port aus";
+      if (step2El) step2El.textContent = "Drücke den Button zum Verbinden und wähle den korrekten COM-Port aus";
+      if (step3El) step3El.textContent = "Wähle deine Respooler-Variante im Menü aus";
       if (step4El) step4El.textContent = "Installiere die Firmware über den Button";
 
       const fwLabelEl = document.getElementById("fwLabel");
@@ -687,19 +682,13 @@
     let selectedValue = "dev";
     let selectedVariant = "v4";
 
-    const seg = document.getElementById("boardSegment");
-    const segIndicator = seg ? seg.querySelector(".seg-indicator") : null;
-    const segButtons = seg ? Array.from(seg.querySelectorAll("button[data-value]")) : [];
+    // Removed board picker segment references
 
     const varSeg = document.getElementById("variantSegment");
     const varIndicator = varSeg ? varSeg.querySelector(".seg-indicator") : null;
     const varButtons = varSeg ? Array.from(varSeg.querySelectorAll("button[data-value]")) : [];
 
-    function updateBoardIndicator() {
-      if (!segIndicator) return;
-      const index = selectedValue === "dev" ? 0 : 1;
-      segIndicator.style.transform = `translateX(${index * 100}%)`;
-    }
+    // Removed updateBoardIndicator
 
     function updateVariantIndicator() {
       if (!varIndicator) return;
@@ -710,8 +699,6 @@
     function applyBoardSelection(val) {
       if (val !== "dev" && val !== "v4") return;
       selectedValue = val;
-      segButtons.forEach(b => b.classList.toggle("is-selected", b.dataset.value === selectedValue));
-      updateBoardIndicator();
       try { localStorage.setItem("lts_respooler_board", selectedValue); } catch {}
     }
 
@@ -724,22 +711,8 @@
       if (savedBoard === "dev" || savedBoard === "v4") selectedValue = savedBoard;
     } catch {}
 
-    segButtons.forEach(b => b.classList.toggle("is-selected", b.dataset.value === selectedValue));
     varButtons.forEach(b => b.classList.toggle("is-selected", b.dataset.value === selectedVariant));
-    updateBoardIndicator();
     updateVariantIndicator();
-
-    segButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const val = btn.dataset.value;
-        if (val && val !== selectedValue) {
-          selectedValue = val;
-          segButtons.forEach(b => b.classList.toggle("is-selected", b === btn));
-          updateBoardIndicator();
-          try { localStorage.setItem("lts_respooler_board", selectedValue); } catch {}
-        }
-      });
-    });
 
     varButtons.forEach(btn => {
       btn.addEventListener("click", () => {
@@ -917,9 +890,10 @@ let lastErrorMessage = "";
           flashBtn.disabled = false;
         }
 
+        const detectedBoardLabel = (selectedValue === "v4") ? "Control Board" : "ESP32 DevKit";
         setProgress(0, isGermanRegion
-          ? "Erfolgreich verbunden!"
-          : "Connected successfully!");
+          ? `Erfolgreich verbunden! (${detectedBoardLabel})`
+          : `Connected successfully! (${detectedBoardLabel})`);
       } catch (err) {
         console.error(err);
         const detailsText = err && err.message ? err.message : String(err);
@@ -964,9 +938,7 @@ let lastErrorMessage = "";
       if (progressBar) {
         progressBar.style.background = "#0E7AFE";
       }
-      if (seg) {
-        seg.classList.add("is-disabled");
-      }
+      // Removed disabling of board segment
       if (varSeg) {
         varSeg.classList.add("is-disabled");
       }
@@ -1088,9 +1060,7 @@ let lastErrorMessage = "";
         if (flashBtn) {
           flashBtn.disabled = true;
         }
-        if (seg) {
-          seg.classList.remove("is-disabled");
-        }
+        // Removed enabling of board segment
         if (varSeg) {
           varSeg.classList.remove("is-disabled");
         }
