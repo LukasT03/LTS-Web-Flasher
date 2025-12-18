@@ -82,6 +82,8 @@
       border-radius: 28px;
       padding: 1rem;
       margin-top: 1.5rem;
+      border: none;
+      box-sizing: border-box;
     }
 
     .flasher-card.progress-card {
@@ -92,6 +94,7 @@
     @media (prefers-color-scheme: dark) {
       .flasher-card {
         background: rgb(28,28,30);
+        border: 1px solid rgba(255,255,255,0.18);
       }
     }
 
@@ -515,8 +518,8 @@
     window.ESPHardReset = esptoolBundle.hardReset || null;
   </script>
   <script>
-    // Fade-in overlay
-    window.addEventListener("load", () => {
+
+window.addEventListener("load", () => {
       const ov = document.getElementById("pageFadeOverlay");
       if (ov) {
         setTimeout(() => {
@@ -635,7 +638,6 @@
       }
       if (unsupportedEl) unsupportedEl.classList.remove("hidden");
 
-      // Safari + Desktop check and append text
       const ua = navigator.userAgent;
       const isSafari = ua.includes("Safari") && !ua.includes("Chrome") && !ua.includes("Chromium");
       const isDesktopSafari = isSafari && window.innerWidth > 1024;
@@ -645,7 +647,7 @@
             ? '<br><br>Du nutzt macOS? Lade das LTS Utility Programm <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">hier</a> herunter.'
             : '<br><br>Using a Mac? Download the LTS Utility program <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">here</a>.';
       }
-      // Update status text to indicate lack of support
+
       if (progressLabel) {
         progressLabel.textContent = isGermanRegion
           ? "Nicht unterstützt"
@@ -659,7 +661,6 @@
       }
       if (unsupportedEl) unsupportedEl.classList.add("hidden");
 
-      // Reset label text to ready when supported
       if (progressLabel) {
         progressLabel.textContent = isGermanRegion
           ? "Bereit für Verbindung"
@@ -667,7 +668,6 @@
       }
     }
 
-    // Firmware URLs & chip families
     const BIN_URLS = {
       dev: "https://download.lts-design.com/Firmware/ESP32-WROOM-32_latest.bin",
       v4:  "https://download.lts-design.com/Firmware/ControlBoard_V4_latest.bin"
@@ -682,13 +682,9 @@
     let selectedValue = "dev";
     let selectedVariant = "v4";
 
-    // Removed board picker segment references
-
     const varSeg = document.getElementById("variantSegment");
     const varIndicator = varSeg ? varSeg.querySelector(".seg-indicator") : null;
     const varButtons = varSeg ? Array.from(varSeg.querySelectorAll("button[data-value]")) : [];
-
-    // Removed updateBoardIndicator
 
     function updateVariantIndicator() {
       if (!varIndicator) return;
@@ -814,7 +810,6 @@ let lastErrorMessage = "";
         },
       });
 
-      // Ensure flashSize is set early to avoid "indexOf" errors inside esptool-js
       if (!espLoader.flashSize) {
         espLoader.flashSize = "4MB";
       }
@@ -972,7 +967,6 @@ let lastErrorMessage = "";
           }
         });
 
-        // Transport cleanup so esptool-js releases its locks before we write our JSON:
         try {
           if (loaderTransport && typeof loaderTransport.disconnect === "function") {
             await loaderTransport.disconnect();
@@ -997,7 +991,7 @@ let lastErrorMessage = "";
         if (progressBar) {
           progressBar.style.background = "rgb(52,199,89)";
         }
-        // Auto‑reset UI after success (5 seconds)
+
         setTimeout(() => {
           if (progressBar) {
             progressBar.style.width = "0%";
@@ -1014,7 +1008,6 @@ let lastErrorMessage = "";
         console.error(err);
         const detailsText = err && err.message ? err.message : String(err);
 
-        // Use a more specific generic message if the error was a download failure
         let genericText;
         if (detailsText.includes(isGermanRegion ? "Download fehlgeschlagen" : "Failed to download firmware")) {
           genericText = isGermanRegion
@@ -1041,7 +1034,6 @@ let lastErrorMessage = "";
           }
         }
       } finally {
-        // Always disconnect/close the serial port and reset local state
         try {
           if (loaderTransport && typeof loaderTransport.disconnect === "function") {
             await loaderTransport.disconnect();
@@ -1062,7 +1054,6 @@ let lastErrorMessage = "";
         if (flashBtn) {
           flashBtn.disabled = true;
         }
-        // Removed enabling of board segment
         if (varSeg) {
           varSeg.classList.remove("is-disabled");
         }
