@@ -32,19 +32,6 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
-#pageRoot {
-  position: relative;
-}
-
-#pageFadeOverlay {
-  position: absolute;
-  inset: 0;
-  background: rgb(var(--bg));
-  z-index: 9999;
-  opacity: 1;
-  transition: opacity 0.65s ease-out;
-}
-
 .header {
   width: 100%;
   display: flex;
