@@ -4,15 +4,6 @@ window.ESPLoader = esptoolBundle.ESPLoader;
 window.ESPLoaderTransport = esptoolBundle.Transport;
 window.ESPHardReset = esptoolBundle.hardReset || null;
 
-window.addEventListener("load", () => {
-  const ov = document.getElementById("pageFadeOverlay");
-  if (ov) {
-    setTimeout(() => {
-      ov.style.opacity = "0";
-      setTimeout(() => ov.remove(), 1000);
-    }, 350);
-  }
-});
 
 const userLang = navigator.language || navigator.userLanguage || "";
 const langCandidates = (navigator.languages && navigator.languages.length)

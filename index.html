@@ -73,6 +73,17 @@
 
   </div>
 
+  <script>
+    window.addEventListener("load", () => {
+      const ov = document.getElementById("pageFadeOverlay");
+      if (ov) {
+        setTimeout(() => {
+          ov.style.opacity = "0";
+          setTimeout(() => ov.remove(), 1000);
+        }, 350);
+      }
+    });
+  </script>
   <script type="module" src="flashing-manager.js"></script>
 
   <footer class="page-footer">
