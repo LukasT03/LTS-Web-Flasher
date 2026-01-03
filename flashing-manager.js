@@ -18,6 +18,13 @@ function sleep(ms) {
 async function hardResetSerial(port) {
   if (!port || !port.setSignals) return;
 
+  const pulse = async () => {
+    await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+    await sleep(120);
+    await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+    await sleep(120);
+  };
+
   const tryOpen = async () => {
     try {
       if (!port.readable || !port.writable) {
@@ -25,20 +32,6 @@ async function hardResetSerial(port) {
         await sleep(150);
       }
     } catch {}
-  };
-
-  // A more standard ESP auto-reset sequence uses BOTH DTR and RTS.
-  // (Many boards wire RTS->EN and DTR->IO0 via an auto-reset circuit.)
-  const pulse = async () => {
-    // drop DTR, raise RTS
-    await port.setSignals({ dataTerminalReady: false, requestToSend: true });
-    await sleep(120);
-    // raise DTR, drop RTS
-    await port.setSignals({ dataTerminalReady: true, requestToSend: false });
-    await sleep(120);
-    // release both
-    await port.setSignals({ dataTerminalReady: false, requestToSend: false });
-    await sleep(120);
   };
 
   await tryOpen();
@@ -186,7 +179,6 @@ let espLoader = null;
 let loaderTransport = null;
 let lastErrorMessage = "";
 
-
 function setProgress(percent, labelText) {
   if (!progressWrapper || !progressBar || !progressLabel) return;
   const clamped = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
@@ -201,46 +193,6 @@ function setProgress(percent, labelText) {
   }
 }
 
-function getPortInfoSafe(port) {
-  try {
-    return port && typeof port.getInfo === "function" ? port.getInfo() : null;
-  } catch {
-    return null;
-  }
-}
-
-function sameUsbInfo(a, b) {
-  return (
-    a &&
-    b &&
-    a.usbVendorId === b.usbVendorId &&
-    a.usbProductId === b.usbProductId
-  );
-}
-
-async function reacquirePortByUsbInfo(usbInfo, timeoutMs = 8000) {
-  // If the device re-enumerates (common on native-USB chips like ESP32-S3),
-  // the previously opened SerialPort can become unusable. Try to find the
-  // re-enumerated port among already-permitted ports.
-  if (!usbInfo || !navigator.serial || typeof navigator.serial.getPorts !== "function") {
-    return null;
-  }
-
-  const start = performance.now();
-  while (performance.now() - start < timeoutMs) {
-    try {
-      const ports = await navigator.serial.getPorts();
-      for (const p of ports) {
-        const info = getPortInfoSafe(p);
-        if (sameUsbInfo(info, usbInfo)) return p;
-      }
-    } catch {}
-    await sleep(250);
-  }
-
-  return null;
-}
-
 async function sendVariantOverSerial() {
   if (!serialPort) return;
 
@@ -248,38 +200,33 @@ async function sendVariantOverSerial() {
     ? '{"SET":{"VAR":"PRO"}}\n'
     : '{"SET":{"VAR":"STD"}}\n';
 
-  // Wait briefly for the port to become writable again after resets.
   const start = performance.now();
-  while (performance.now() - start < 6000) {
+  while (performance.now() - start < 5000) {
     try {
       if (serialPort.writable) break;
     } catch {}
-    await sleep(120);
+    await sleep(100);
   }
 
   try {
     if (!serialPort.writable) {
       await serialPort.open({ baudRate: 115200 });
-      await sleep(150);
     }
   } catch (e) {
     console.error("Failed to open serial for VAR", e);
-    throw e;
+    return;
   }
 
-  let writer = null;
   try {
-    writer = serialPort.writable.getWriter();
+    const writer = serialPort.writable.getWriter();
     const data = new TextEncoder().encode(payload);
     await writer.write(data);
+    writer.releaseLock();
   } catch (e) {
     console.error("Failed to send VAR over serial", e);
-    throw e;
-  } finally {
-    try { if (writer) writer.releaseLock(); } catch {}
   }
 
-  await sleep(250);
+  await sleep(200);
 }
 
 async function ensureLoader() {
@@ -495,37 +442,10 @@ async function handleFlashClick() {
 
     setProgress(100, isGermanRegion ? "Konfiguration wird übertragen…" : "Applying configuration…");
 
-    const beforeResetInfo = getPortInfoSafe(serialPort);
-
-    // Reboot into the freshly flashed firmware.
     await hardResetSerial(serialPort);
-
-    // Native-USB targets (often ESP32-S3) may need longer to come back.
-    await sleep(selectedValue === "v4" ? 1400 : 600);
-
-    // If the device re-enumerated, try to reacquire the port without asking the user again.
-    if (selectedValue === "v4") {
-      const reacquired = await reacquirePortByUsbInfo(beforeResetInfo);
-      if (reacquired) {
-        serialPort = reacquired;
-      }
-    }
-
-    // Try sending the variant config.
-    try {
-      await sendVariantOverSerial();
-    } catch (e) {
-      // Give a clearer UI hint for the common ESP32-S3 re-enumeration case.
-      const msg = isGermanRegion
-        ? "Konfiguration konnte nicht übertragen werden. Bitte Board erneut verbinden und die Variante in der Web Control setzen."
-        : "Could not apply configuration. Please reconnect the board and set the variant in Web Control.";
-      setProgress(0, msg);
-      throw e;
-    }
-
-    await sleep(200);
-
-    // Final reset to ensure the firmware starts cleanly with the saved config.
+    await sleep(500);
+    await sendVariantOverSerial();
+    await sleep(150);
     await hardResetSerial(serialPort);
 
     setProgress(100, isGermanRegion ? "Erfolgreich installiert!" : "Flashed successfully!");
