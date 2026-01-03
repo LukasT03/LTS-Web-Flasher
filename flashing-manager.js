@@ -103,7 +103,11 @@ if (progressPercent) {
 }
 
 // Keep UI consistent across browsers (even if WebSerial is unsupported).
-if (connectBtn) connectBtn.classList.remove("hidden");
+if (connectBtn) {
+  connectBtn.classList.remove("hidden");
+  // In case the HTML has `disabled` set by default, ensure it is clickable.
+  connectBtn.disabled = false;
+}
 if (flashBtn) {
   flashBtn.classList.remove("hidden");
   flashBtn.disabled = true;
@@ -304,7 +308,6 @@ async function ensureLoader() {
 }
 
 async function handleConnectClick() {
-  if (!supportsWebSerial) return;
   try {
     setProgress(0, isGermanRegion ? "Wähle einen seriellen Port" : "Please choose a serial port");
     const port = await navigator.serial.requestPort();
