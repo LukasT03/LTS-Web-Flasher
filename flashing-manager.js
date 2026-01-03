@@ -75,6 +75,12 @@ function applyGermanTexts() {
 
   const connectBtnEl = document.getElementById("connectBtn");
   if (connectBtnEl) connectBtnEl.textContent = "Board verbinden";
+
+  const unsupportedEl = document.getElementById("wbUnsupported");
+  if (unsupportedEl) {
+    unsupportedEl.innerHTML =
+      "WebSerial wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge auf einem Desktop-Computer.";
+  }
 }
 
 if (isGermanRegion) {
@@ -86,6 +92,7 @@ const supportsWebSerial =
 
 const connectBtn = document.getElementById("connectBtn");
 const flashBtn = document.getElementById("flashBtn");
+const unsupportedEl = document.getElementById("wbUnsupported");
 const progressWrapper = document.getElementById("progressWrapper");
 const progressBar = document.getElementById("progressBar");
 const progressLabel = document.getElementById("progressLabel");
@@ -98,12 +105,43 @@ if (progressPercent) {
   progressPercent.textContent = "0 %";
 }
 
-// Inline “not supported” UI is handled by the page overlay in index.html now.
-// Keep the normal UI visible; actions will no-op on unsupported browsers.
-if (connectBtn) connectBtn.classList.remove("hidden");
-if (flashBtn) {
-  flashBtn.classList.remove("hidden");
-  flashBtn.disabled = true;
+if (!supportsWebSerial) {
+  document.body.classList.add("no-webserial");
+  if (connectBtn) connectBtn.classList.add("hidden");
+  if (flashBtn) {
+    flashBtn.classList.remove("hidden");
+    flashBtn.disabled = true;
+  }
+  if (unsupportedEl) unsupportedEl.classList.remove("hidden");
+
+  const ua = navigator.userAgent;
+  const isSafari = ua.includes("Safari") && !ua.includes("Chrome") && !ua.includes("Chromium");
+  const isDesktopSafari = isSafari && window.innerWidth > 1024;
+  if (unsupportedEl && isDesktopSafari) {
+    unsupportedEl.innerHTML +=
+      isGermanRegion
+        ? '<br><br>Du nutzt macOS? Lade das LTS Utility Programm <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">hier</a> herunter.'
+        : '<br><br>Using a Mac? Download the LTS Utility program <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">here</a>.';
+  }
+
+  if (progressLabel) {
+    progressLabel.textContent = isGermanRegion
+      ? "Nicht unterstützt"
+      : "Not supported";
+  }
+} else {
+  if (connectBtn) connectBtn.classList.remove("hidden");
+  if (flashBtn) {
+    flashBtn.classList.remove("hidden");
+    flashBtn.disabled = true;
+  }
+  if (unsupportedEl) unsupportedEl.classList.add("hidden");
+
+  if (progressLabel) {
+    progressLabel.textContent = isGermanRegion
+      ? "Bereit für Verbindung"
+      : "Ready for connection";
+  }
 }
 
 const BIN_URLS = {

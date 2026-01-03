@@ -2,63 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LTS Web Flasher</title>
   <link rel="icon" type="image/png" href="/LogoFavicon.png" />
-
   <link rel="stylesheet" href="styles.css" />
-  <style>
-    @media (max-width: 450px) {
-      #browserNotSupportedOverlay .not-sup-desc {
-        font-size: 1.15rem !important;
-      }
-      #browserNotSupportedOverlay .not-sup-actions {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        width: max-content !important;
-        max-width: 100% !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-      }
-      #browserNotSupportedOverlay .not-sup-actions > a,
-      #browserNotSupportedOverlay .not-sup-actions > button {
-        width: 100% !important;
-      }
-      /* On narrow screens: show Download button first, then Have A Look */
-      #browserNotSupportedOverlay #notSupDownloadBtn {
-        order: 1;
-      }
-      #browserNotSupportedOverlay #notSupHaveLookBtn {
-        order: 2;
-      }
-      /* On narrow screens: show only "Not Supported" */
-      #browserNotSupportedOverlay .not-sup-title-browser {
-        display: none;
-      }
-      #browserNotSupportedOverlay .not-sup-title-main {
-        display: inline;
-      }
-    }
-  </style>
 
 </head>
 <body>
-  <div id="pageRoot" style="position:relative;">
-
-    <div id="pageFadeOverlay" style="position:fixed; inset:0; background:rgb(var(--bg)); z-index:9999; opacity:1; transition:opacity 0.65s ease-out;"></div>
-    <div id="browserNotSupportedOverlay" style="position:fixed; inset:0; background:rgb(var(--bg) / 0.96); z-index:9998; display:none; opacity:1; transition:opacity 0.35s ease-out; flex-direction:column; align-items:center; justify-content:flex-start; text-align:center; box-sizing:border-box; padding:18px 35px 28px 35px; overflow:auto; -webkit-overflow-scrolling:touch;">
-      <div style="max-width:560px; width:100%; margin-top:auto; margin-bottom:auto;">
-        <img src="Logo.png" alt="Not supported" style="width:86px; height:86px; margin:0 auto 22px auto; display:block;" />
-        <h1 style="margin:0 0 12px 0;"><span class="not-sup-title-browser">Browser</span> <span class="not-sup-title-main">Not Supported</span></h1>
-        <div class="not-sup-desc" style="font-size:1.2rem; line-height:1.35; color:rgb(var(--text)); opacity:0.65; max-width:480px; margin:0 auto;">
-          To flash your Board, use a compatible browser like Chrome or Edge on desktop. You can also download the LTS Utility program for macOS.
-        </div>
-        <div class="not-sup-actions" style="display:flex; flex-direction:row; gap:12px; margin-top:22px; align-items:center; justify-content:center; width:100%; flex-wrap:wrap;">
-          <a id="notSupHaveLookBtn" class="lts-btn" href="#" role="button" style="width:auto; padding:10px 20px; height:auto; min-height:0; line-height:1.2; text-decoration:none;">Have A Look</a>
-          <a id="notSupDownloadBtn" class="lts-btn" href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank" rel="noopener" style="width:auto; padding:10px 20px; height:auto; min-height:0; line-height:1.2; text-decoration:none; background:#0E7AFE; border-color:#0E7AFE; color:#fff;">Download macOS App</a>
-        </div>
-      </div>
-    </div>
+  <div id="pageRoot">
+    <div id="pageFadeOverlay"></div>
 
     <div class="header">
       <div class="header-logo">
@@ -92,6 +44,9 @@
       <button class="seg-btn" data-value="pro">Respooler Pro</button>
     </div>
 
+    <div id="wbUnsupported" class="note hidden">
+      WebSerial is not supported in this browser. Please use Chrome or Edge on desktop.
+    </div>
 
   </div>
 
@@ -120,37 +75,6 @@
 
   <script>
     window.addEventListener("load", () => {
-      // Show a blocking overlay when the browser cannot use WebSerial.
-      try {
-        const notSup = document.getElementById("browserNotSupportedOverlay");
-        const haveLook = document.getElementById("notSupHaveLookBtn");
-        const setNoScroll = (on) => {
-          try {
-            // Simple: lock the page behind the overlay; the overlay itself can still scroll.
-            document.documentElement.style.overflow = on ? 'hidden' : '';
-            document.body.style.overflow = on ? 'hidden' : '';
-          } catch (_) {}
-        };
-
-        if (haveLook && notSup) {
-          haveLook.addEventListener('click', () => {
-            notSup.style.opacity = '0';
-            setTimeout(() => {
-              try { notSup.remove(); } catch (_) { notSup.style.display = 'none'; }
-              setNoScroll(false);
-            }, 350);
-          });
-        }
-
-        const hasWebSerial = ("serial" in navigator);
-        const isSecure = !!window.isSecureContext;
-        if (notSup && (!hasWebSerial || !isSecure)) {
-          setNoScroll(true);
-          notSup.style.display = "flex";
-          notSup.style.opacity = "1";
-        }
-      } catch (_) {}
-
       const ov = document.getElementById("pageFadeOverlay");
       if (ov) {
         setTimeout(() => {

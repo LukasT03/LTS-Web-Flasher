@@ -5,43 +5,6 @@
   --accent-dark: #1364C4;
 }
 
-/* Spezifische Farben für Control-Buttons (Block A) */
-#wbConnect, #wbConnect:hover, #wbConnect:active, #wbConnect[disabled] {
-  background:#1a1a1a !important;   /* black in light mode */
-  color:#ffffff !important;
-  border:none !important;
-  box-shadow:none !important;
-  -webkit-appearance:none;
-  appearance:none;
-}
-
-/* Browser not supported overlay: match Connect Respooler button styling (light mode) */
-#notSupHaveLookBtn,
-#notSupHaveLookBtn:hover,
-#notSupHaveLookBtn:active,
-#notSupHaveLookBtn:visited {
-  background:#1a1a1a !important;   /* black in light mode */
-  color:#ffffff !important;
-  border:none !important;
-  box-shadow:none !important;
-  -webkit-appearance:none;
-  appearance:none;
-  text-decoration:none;
-  font-weight: 600 !important;
-  font-family: inherit;
-}
-
-@media (prefers-color-scheme: dark) {
-  /* Browser not supported overlay: match Connect button styling (dark mode) */
-  #notSupHaveLookBtn,
-  #notSupHaveLookBtn:hover,
-  #notSupHaveLookBtn:active,
-  #notSupHaveLookBtn:visited {
-    background: rgb(var(--text)) !important;
-    color: #000 !important;
-  }
-}
-
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: 15 17 21;
@@ -67,6 +30,19 @@ body {
 
 button {
   -webkit-tap-highlight-color: transparent;
+}
+
+#pageRoot {
+  position: relative;
+}
+
+#pageFadeOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--bg));
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.65s ease-out;
 }
 
 .header {
