@@ -193,6 +193,26 @@ ol li::before {
   }
 }
 
+@media (prefers-color-scheme: dark) {
+  /* Browser not supported overlay: match Connect Respooler button styling */
+  #notSupHaveLookBtn,
+  #notSupHaveLookBtn:hover,
+  #notSupHaveLookBtn:active {
+    background: rgb(var(--text)) !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    -webkit-appearance: none;
+    appearance: none;
+    text-decoration: none;
+  }
+
+  #notSupHaveLookBtn:disabled {
+    background: rgba(234, 234, 234, 0.7) !important;
+    color: #000000 !important;
+  }
+}
+
 .note {
   color: #ff8c28;
   font-size: 1.1rem;
