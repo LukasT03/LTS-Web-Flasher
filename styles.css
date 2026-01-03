@@ -411,6 +411,11 @@ ol li::before {
 }
 
 @media (max-width: 450px) {
+  body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
   h1 {
     font-size: 1.9rem;
   }
@@ -450,11 +455,6 @@ ol li::before {
 }
 
 @media (max-height: 820px) {
-  body {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
-
   .header {
     flex-direction: row;
     justify-content: center;
@@ -488,6 +488,11 @@ ol li::before {
 }
 
 @media (max-width: 450px) and (max-height: 820px) {
+  body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
   .header-logo img {
     max-width: 100px;
   }
