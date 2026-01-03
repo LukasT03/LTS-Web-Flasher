@@ -24,6 +24,10 @@
       #browserNotSupportedOverlay .not-sup-actions > button {
         width: 100% !important;
       }
+      /* On narrow screens: hide the download button */
+      #notSupDownloadBtn {
+        display: none !important;
+      }
       /* On narrow screens: show Download button first, then Have A Look */
       #browserNotSupportedOverlay .not-sup-actions > a {
         order: 1;
@@ -48,13 +52,13 @@
     <div id="browserNotSupportedOverlay" style="position:fixed; inset:0; background:rgb(var(--bg) / 0.96); z-index:9998; display:none; opacity:1; transition:opacity 0.35s ease-out; flex-direction:column; align-items:center; justify-content:flex-start; text-align:center; box-sizing:border-box; padding:18px 35px 28px 35px; overflow:auto; -webkit-overflow-scrolling:touch;">
       <div style="max-width:560px; width:100%; margin-top:auto; margin-bottom:auto;">
         <img src="Logo.png" alt="Not supported" style="width:86px; height:86px; margin:0 auto 22px auto; display:block;" />
-        <h1 style="margin:0 0 12px 0;"><span class="not-sup-title-browser">Browser</span> <span class="not-sup-title-main">Not Supported</span></h1>
-        <div class="not-sup-desc" style="font-size:1.2rem; line-height:1.35; color:rgb(var(--text)); opacity:0.65; max-width:480px; margin:0 auto;">
+        <h1 style="margin:0 0 12px 0;"><span id="notSupTitleBrowser" class="not-sup-title-browser">Browser</span> <span id="notSupTitleMain" class="not-sup-title-main">Not Supported</span></h1>
+        <div id="notSupDesc" class="not-sup-desc" style="font-size:1.2rem; line-height:1.35; color:rgb(var(--text)); opacity:0.65; max-width:480px; margin:0 auto;">
           To flash the firmware, use a compatible browser like Chrome or Edge on desktop. On macOS you can download the LTS Utility program.
         </div>
         <div class="not-sup-actions" style="display:flex; flex-direction:row; gap:12px; margin-top:22px; align-items:center; justify-content:center; width:100%; flex-wrap:wrap;">
-          <button id="notSupHaveLookBtn" class="lts-btn" type="button" style="width:auto; padding:10px 20px; height:auto; min-height:0; line-height:1.2;">Have A Look</button>
-          <a class="lts-btn" href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank" rel="noopener" style="width:auto; padding:10px 20px; height:auto; min-height:0; line-height:1.2; text-decoration:none; background:#0E7AFE; border-color:#0E7AFE; color:#fff;">Download LTS Utility</a>
+          <button id="notSupHaveLookBtn" class="lts-btn" type="button" style="width:auto; padding:10px 20px; height:auto; min-height:0; line-height:1.2; font-weight:600;">Have A Look</button>
+          <a id="notSupDownloadBtn" class="lts-btn" href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank" rel="noopener" style="width:auto; padding:10px 20px; height:auto; min-height:0; line-height:1.2; font-weight:600; text-decoration:none; background:#0E7AFE; border-color:#0E7AFE; color:#fff;">Download LTS Utility</a>
         </div>
       </div>
     </div>
@@ -123,6 +127,24 @@
       try {
         const notSup = document.getElementById("browserNotSupportedOverlay");
         const haveLook = document.getElementById("notSupHaveLookBtn");
+        const titleBrowser = document.getElementById("notSupTitleBrowser");
+        const titleMain = document.getElementById("notSupTitleMain");
+        const desc = document.getElementById("notSupDesc");
+        const dl = document.getElementById("notSupDownloadBtn");
+
+        const lang = String(navigator.language || navigator.userLanguage || "").toLowerCase();
+        const isGerman = lang.startsWith("de");
+
+        if (isGerman) {
+          const isNarrow = !!(window.matchMedia && window.matchMedia('(max-width: 450px)').matches);
+
+          if (titleBrowser) titleBrowser.textContent = "Browser";
+          // Desktop: “Browser nicht unterstützt” (lowercase n). Narrow screens show only the main title -> “Nicht unterstützt”.
+          if (titleMain) titleMain.textContent = isNarrow ? "Nicht unterstützt" : "nicht unterstützt";
+          if (desc) desc.textContent = "Um die Firmware zu installieren, verwende einen kompatiblen Browser wie Chrome oder Edge auf einem Desktop Computer. Für macOS gibt es auch das LTS Utility Programm.";
+          if (haveLook) haveLook.textContent = "Ansehen";
+          if (dl) dl.textContent = "LTS Utility herunterladen";
+        }
         const setNoScroll = (on) => {
           try {
             // Simple: lock the page behind the overlay; the overlay itself can still scroll.
