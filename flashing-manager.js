@@ -308,6 +308,10 @@ async function ensureLoader() {
 }
 
 async function handleConnectClick() {
+  if (!supportsWebSerial || !navigator.serial || typeof navigator.serial.requestPort !== "function") {
+    setProgress(0, isGermanRegion ? "Nicht unterstützt" : "Not supported");
+    return;
+  }
   try {
     setProgress(0, isGermanRegion ? "Wähle einen seriellen Port" : "Please choose a serial port");
     const port = await navigator.serial.requestPort();
@@ -364,6 +368,10 @@ async function handleConnectClick() {
 }
 
 async function handleFlashClick() {
+  if (!supportsWebSerial || !navigator.serial || typeof navigator.serial.requestPort !== "function") {
+    setProgress(0, isGermanRegion ? "Nicht unterstützt" : "Not supported");
+    return;
+  }
   if (!serialPort) {
     if (flashBtn) {
       flashBtn.disabled = true;
