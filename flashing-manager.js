@@ -18,13 +18,6 @@ function sleep(ms) {
 async function hardResetSerial(port) {
   if (!port || !port.setSignals) return;
 
-  const pulse = async () => {
-    await port.setSignals({ dataTerminalReady: false, requestToSend: true });
-    await sleep(120);
-    await port.setSignals({ dataTerminalReady: false, requestToSend: false });
-    await sleep(120);
-  };
-
   const tryOpen = async () => {
     try {
       if (!port.readable || !port.writable) {
@@ -34,16 +27,62 @@ async function hardResetSerial(port) {
     } catch {}
   };
 
+  // Two reset strategies because classic ESP32 DevKits (USB-UART) and native-USB
+  // ESP32-S3 boards often behave differently with WebSerial signal polarity.
+  //
+  // Strategy A (DevKit-friendly): keep IO0 HIGH (DTR deasserted) and pulse EN via RTS.
+  const pulseEnOnly = async () => {
+    // release both first
+    await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+    await sleep(60);
+    // EN low (RTS asserted)
+    await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+    await sleep(140);
+    // EN high
+    await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+    await sleep(180);
+  };
+
+  // Strategy B (often works well on native-USB ESP32-S3 designs with auto-reset wiring)
+  // Toggle both DTR and RTS in a common sequence.
+  const pulseDtrRts = async () => {
+    await port.setSignals({ dataTerminalReady: false, requestToSend: true });
+    await sleep(120);
+    await port.setSignals({ dataTerminalReady: true, requestToSend: false });
+    await sleep(120);
+    await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+    await sleep(120);
+  };
+
   await tryOpen();
 
+  const doPulse = async () => {
+    // If a board is explicitly selected, prefer a matching strategy.
+    if (selectedValue === "dev") {
+      await pulseEnOnly();
+      return;
+    }
+    if (selectedValue === "v4") {
+      await pulseDtrRts();
+      return;
+    }
+
+    // Fallback: try both.
+    try {
+      await pulseEnOnly();
+    } catch {
+      await pulseDtrRts();
+    }
+  };
+
   try {
-    await pulse();
+    await doPulse();
     return;
   } catch (err) {
     if (err && err.name === "InvalidStateError") {
       await tryOpen();
       try {
-        await pulse();
+        await doPulse();
         return;
       } catch (err2) {
         console.error("Hard reset via Web Serial failed", err2);
