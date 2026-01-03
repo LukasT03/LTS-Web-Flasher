@@ -310,8 +310,8 @@ async function ensureLoader() {
 async function handleConnectClick() {
   if (!supportsWebSerial || !navigator.serial || typeof navigator.serial.requestPort !== "function") {
     const msg = isGermanRegion
-      ? "WebBluetooth wird in diesem Browser nicht unterstützt."
-      : "WebBluetooth is not supported in this browser.";
+      ? "WebSerial wird nicht unterstützt."
+      : "WebSerial is not supported.";
     try { alert(msg); } catch {}
     setProgress(0, isGermanRegion ? "Nicht unterstützt" : "Not supported");
     return;
