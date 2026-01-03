@@ -86,7 +86,7 @@
     <hr class="section-divider">
 
     <div class="connect-row">
-      <button type="button" class="lts-btn" id="connectBtn" onclick="return window.__ltsConnectFallback && window.__ltsConnectFallback(event);">Connect Board</button>
+      <button type="button" class="lts-btn" id="connectBtn">Connect Board</button>
     </div>
 
     <div id="variantSegment" class="segmented">
@@ -182,28 +182,6 @@
         }, 350);
       }
     });
-  </script>
-  <script>
-    // Fallback for browsers where the module script doesn't run (e.g. iOS Safari):
-    // show a native alert on Connect if WebSerial is unsupported.
-    window.__ltsConnectFallback = function (e) {
-      try {
-        const hasWebSerial = ("serial" in navigator) && !!navigator.serial && (typeof navigator.serial.requestPort === "function");
-        const isSecure = !!window.isSecureContext;
-        if (!hasWebSerial || !isSecure) {
-          const lang = String(navigator.language || navigator.userLanguage || "").toLowerCase();
-          const isDE = lang.startsWith("de");
-          const msg = isDE
-            ? "WebSerial wird nicht unterstützt."
-            : "WebSerial is not supported.";
-          try { alert(msg); } catch (_) {}
-          if (e && typeof e.preventDefault === "function") e.preventDefault();
-          if (e && typeof e.stopPropagation === "function") e.stopPropagation();
-          return false;
-        }
-      } catch (_) {}
-      return true;
-    };
   </script>
   <script type="module" src="flashing-manager.js"></script>
 
