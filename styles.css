@@ -201,17 +201,6 @@ ol li::before {
   text-align: center;
 }
 
-#wbUnsupported a {
-  color: #ff8c28;
-  text-decoration: underline;
-}
-
-#wbUnsupported a:visited,
-#wbUnsupported a:hover,
-#wbUnsupported a:active {
-  color: #ff8c28;
-}
-
 .progress-wrapper {
   font-size: 1.1rem;
   margin-top: -0.09rem;
@@ -501,11 +490,5 @@ ol li::before {
 @media (max-width: 450px) and (max-height: 820px) {
   .header-logo img {
     max-width: 100px;
-  }
-}
-
-@media (max-width: 450px) {
-  body.no-webserial .flasher-card.progress-card {
-    display: none !important;
   }
 }

@@ -76,11 +76,6 @@ function applyGermanTexts() {
   const connectBtnEl = document.getElementById("connectBtn");
   if (connectBtnEl) connectBtnEl.textContent = "Board verbinden";
 
-  const unsupportedEl = document.getElementById("wbUnsupported");
-  if (unsupportedEl) {
-    unsupportedEl.innerHTML =
-      "WebSerial wird in diesem Browser nicht unterstützt. Bitte verwende Chrome oder Edge auf einem Desktop-Computer.";
-  }
 }
 
 if (isGermanRegion) {
@@ -99,49 +94,26 @@ const progressLabel = document.getElementById("progressLabel");
 const progressPercent = document.getElementById("progressPercent");
 
 if (progressLabel) {
-  progressLabel.textContent = isGermanRegion ? "Bereit für Verbindung" : "Ready for connection";
+  progressLabel.textContent = !supportsWebSerial
+    ? (isGermanRegion ? "Nicht unterstützt" : "Not supported")
+    : (isGermanRegion ? "Bereit für Verbindung" : "Ready for connection");
 }
 if (progressPercent) {
   progressPercent.textContent = "0 %";
 }
 
-if (!supportsWebSerial) {
-  document.body.classList.add("no-webserial");
-  if (connectBtn) connectBtn.classList.add("hidden");
-  if (flashBtn) {
-    flashBtn.classList.remove("hidden");
-    flashBtn.disabled = true;
-  }
-  if (unsupportedEl) unsupportedEl.classList.remove("hidden");
+// Keep UI consistent across browsers (even if WebSerial is unsupported).
+if (connectBtn) connectBtn.classList.remove("hidden");
+if (flashBtn) {
+  flashBtn.classList.remove("hidden");
+  flashBtn.disabled = true;
+}
+if (unsupportedEl) unsupportedEl.classList.add("hidden");
 
-  const ua = navigator.userAgent;
-  const isSafari = ua.includes("Safari") && !ua.includes("Chrome") && !ua.includes("Chromium");
-  const isDesktopSafari = isSafari && window.innerWidth > 1024;
-  if (unsupportedEl && isDesktopSafari) {
-    unsupportedEl.innerHTML +=
-      isGermanRegion
-        ? '<br><br>Du nutzt macOS? Lade das LTS Utility Programm <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">hier</a> herunter.'
-        : '<br><br>Using a Mac? Download the LTS Utility program <a href="https://download.lts-design.com/Apps/LTS-Utility.zip" target="_blank">here</a>.';
-  }
-
-  if (progressLabel) {
-    progressLabel.textContent = isGermanRegion
-      ? "Nicht unterstützt"
-      : "Not supported";
-  }
-} else {
-  if (connectBtn) connectBtn.classList.remove("hidden");
-  if (flashBtn) {
-    flashBtn.classList.remove("hidden");
-    flashBtn.disabled = true;
-  }
-  if (unsupportedEl) unsupportedEl.classList.add("hidden");
-
-  if (progressLabel) {
-    progressLabel.textContent = isGermanRegion
-      ? "Bereit für Verbindung"
-      : "Ready for connection";
-  }
+if (progressLabel) {
+  progressLabel.textContent = !supportsWebSerial
+    ? (isGermanRegion ? "Nicht unterstützt" : "Not supported")
+    : (isGermanRegion ? "Bereit für Verbindung" : "Ready for connection");
 }
 
 const BIN_URLS = {
