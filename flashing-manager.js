@@ -160,8 +160,8 @@ if (progressLabel) {
 }
 
 const BIN_URLS = {
-  dev: "https://download.lts-design.com/Firmware/ESP32-WROOM-32_latest.bin",
-  v4:  "https://download.lts-design.com/Firmware/ControlBoard_V4_latest.bin"
+  dev: "https://respooler.lts-design.com/Firmware/ESP32-WROOM-32_latest.bin",
+  v4:  "https://respooler.lts-design.com/Firmware/ControlBoard_V4_latest.bin"
 };
 
 const CHIP_FAMILY = {
@@ -576,7 +576,7 @@ async function loadFirmwareVersion() {
   const el = document.getElementById("fwVersionValue");
   try {
     const res = await fetch(
-      "https://download.lts-design.com/Firmware/latest_board_firmware.txt",
+      "https://respooler.lts-design.com/Firmware/latest_board_firmware.txt",
       { cache: "no-store" }
     );
     const txt = (await res.text()).trim().split(/\s+/)[0];
