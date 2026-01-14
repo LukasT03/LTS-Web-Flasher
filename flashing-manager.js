@@ -39,6 +39,12 @@ const DRIVER_HELP_TRIGGERS = [
   /\bnicht\s*erkannt\b/i,
   /\btimeout\b/i,
   /\bzeitüberschreitung\b/i,
+  /failed\s+to\s+execute\s+'open'\s+on\s+'serialport'/i,
+  /failed\s+to\s+open\s+serial\s+port/i,
+  /serialport:\s*failed\s+to\s+open/i,
+  /could\s+not\s+open\s+serial/i,
+  /notallowederror/i,
+  /networkerror/i,
 ];
 
 function isLikelyDriverOrPortIssueMessage(msg) {
