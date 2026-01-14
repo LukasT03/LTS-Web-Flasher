@@ -5,11 +5,13 @@ window.ESPLoaderTransport = esptoolBundle.Transport;
 window.ESPHardReset = esptoolBundle.hardReset || null;
 
 
-const userLang = navigator.language || navigator.userLanguage || "";
-const langCandidates = (navigator.languages && navigator.languages.length)
-  ? navigator.languages
-  : [userLang];
-const isGermanRegion = langCandidates.some(l => /^de(-|$)/i.test(l));
+const primaryLang =
+  (Array.isArray(navigator.languages) && navigator.languages.length
+    ? navigator.languages[0]
+    : (navigator.language || navigator.userLanguage || "")) || "";
+
+// English is the default. Only switch to German if the *primary* preferred language is German.
+const isGermanRegion = /^de(-|$)/i.test(String(primaryLang).toLowerCase());
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
