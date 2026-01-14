@@ -27,7 +27,7 @@ function withTimeout(promise, ms, timeoutError) {
 }
 
 const DRIVER_HELP_LINKS = {
-  cp210x: "https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers",
+  cp210x: "https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers?tab=downloads",
   ch340: "https://www.wch-ic.com/downloads/ch341ser_exe.html",
   ftdi: "https://ftdichip.com/drivers/vcp-drivers/",
 };
@@ -46,28 +46,28 @@ function isLikelyDriverOrPortIssueMessage(msg) {
   return DRIVER_HELP_TRIGGERS.some((re) => re.test(text));
 }
 
-function buildDriverHelpData(detailsText) {
-  const title = isGermanRegion ? "ESP32 nicht erkannt" : "ESP32 not detected";
+function buildDriverHelpData() {
+  const title = isGermanRegion ? "Kein ESP32 Chip erkannt" : "ESP32 not detected";
   const body = isGermanRegion
-    ? "Wenn dein ESP32/Respooler hier nicht erkannt wird, liegt das meistens an fehlenden USB-Seriell-Treibern oder am falschen COM-Port (z.B. Bluetooth). Der richtige Port heißt häufig so ähnlich:"
-    : "If your ESP32/Respooler is not detected here, it is usually caused by missing USB-serial drivers or selecting the wrong COM port (e.g. Bluetooth). The correct port often looks like:";
+    ? "Am ausgewählten Port ist kein ESP32 basierted Board angeschlossen. Es ist möglich, dass der korrekte Port aufgrund fehlender Treiber nicht erkannt wird. Der korrekte Port würde so oder so ähnlich heißen:"
+    : "No ESP32-based board was found on the selected port. If the correct port is missing from the list, the required USB-to-serial driver may not be installed. The correct port often looks like:";
 
   const portExamples = [
-    "Silicon Labs CP210x USB to UART Bridge (COM…) / CP2102",
-    "USB-SERIAL CH340 (COM…) / CH341",
-    "FT232R USB UART (COM…) / FTDI",
+    "CP2102 USB to UART Bridge Controller",
+    "USB-SERIAL CH340 (COM3)",
+    "USB JTAG/serial debug unit",
   ];
 
   const linksTitle = isGermanRegion ? "Treiber-Downloads" : "Driver downloads";
   const links = [
-    { label: "CP210x (Silicon Labs)", href: DRIVER_HELP_LINKS.cp210x },
-    { label: "CH340/CH341 (WCH)", href: DRIVER_HELP_LINKS.ch340 },
-    { label: "FTDI (VCP Drivers)", href: DRIVER_HELP_LINKS.ftdi },
+    { label: isGermanRegion ? "CP210x (am häufigsten)" : "CP210x (most common)", href: DRIVER_HELP_LINKS.cp210x },
+    { label: isGermanRegion ? "CH340/CH341" : "CH340/CH341", href: DRIVER_HELP_LINKS.ch340 },
+    { label: isGermanRegion ? "FTDI (selten)" : "FTDI (rare)", href: DRIVER_HELP_LINKS.ftdi },
   ];
 
   const hint = isGermanRegion
-    ? "Tipp: Nutze ein Daten-USB-Kabel (nicht nur Strom) und stecke direkt am PC (kein Hub)."
-    : "Tip: Use a data USB cable (not power-only) and connect directly to the PC (no hub).";
+    ? "Tipp: Verwende ein USB-Kabel, das Daten übertragen kann und benutze keinen Hub oder Adapter."
+    : "Tip: Use a USB cable that supports data transfer (not charge-only) and connect directly to the PC (no hub or adapter).";
 
   return {
     title,
@@ -96,8 +96,8 @@ function markDriverHelpShownThisSession() {
 }
 
 
-function showDriverHelpPopup(detailsText) {
-  const data = buildDriverHelpData(detailsText);
+function showDriverHelpPopup() {
+  const data = buildDriverHelpData();
 
   // Fallback (until HTML/CSS is wired): show an alert.
   const fallbackAlert = () => {
@@ -445,22 +445,14 @@ async function sendVariantOverSerial() {
 async function ensureLoader() {
   if (espLoader) return espLoader;
   if (!serialPort) {
-    throw new Error(
-      isGermanRegion
-        ? "Keine serielle Verbindung offen"
-        : "No serial connection open"
-    );
+    throw new Error("No serial connection open");
   }
 
   const TransportCtor = window.ESPLoaderTransport;
   const LoaderCtor = window.ESPLoader;
 
   if (!TransportCtor || !LoaderCtor) {
-    throw new Error(
-      isGermanRegion
-        ? "Flasher-Bibliothek nicht geladen"
-        : "Flasher library not loaded"
-    );
+    throw new Error("Flasher library not loaded");
   }
 
   const transport = new TransportCtor(serialPort);
@@ -480,11 +472,7 @@ async function ensureLoader() {
   }
 
   try {
-    const timeoutErr = new Error(
-      isGermanRegion
-        ? "Es wurde kein ESP32 erkannt. Bitte richtigen Port wählen."
-        : "No ESP32 detected. Please choose the correct serial port."
-    );
+    const timeoutErr = new Error("No ESP32 detected (sync timeout)");
 
     // If the selected port is not an ESP device, sync can hang for a long time on some systems.
     // Keep this short so the UI never gets stuck on “Detecting board…”.
@@ -509,11 +497,7 @@ async function ensureLoader() {
 
   // Strict validation: if we can't identify an ESP chip, treat this as a wrong port selection.
   if (!chipNameUpper || !chipNameUpper.includes("ESP32")) {
-    throw new Error(
-      isGermanRegion
-        ? `Es wurde kein ESP32 erkannt. Bitte richtigen Port wählen.`
-        : `No ESP32 detected. Please choose the correct serial port.`
-    );
+    throw new Error("No ESP32 detected (invalid chip)");
   }
 
   const isPlainEsp32 =
@@ -618,7 +602,7 @@ async function handleConnectClick() {
     // Auto-open only once per tab/session.
     if (isDriverHelpCase && !hasShownDriverHelpThisSession()) {
       markDriverHelpShownThisSession();
-      try { showDriverHelpPopup(detailsText); } catch {}
+      try { showDriverHelpPopup(); } catch {}
     }
 
     setProgress(0, genericText);
@@ -632,7 +616,7 @@ async function handleConnectClick() {
         moreLink.addEventListener("click", function (e) {
           e.preventDefault();
           if (isDriverHelpCase) {
-            try { showDriverHelpPopup(detailsText); } catch {}
+            try { showDriverHelpPopup(); } catch {}
           } else {
             // Keep legacy behavior for non-detection errors.
             alert(lastErrorMessage || detailsText);
@@ -683,7 +667,7 @@ async function handleFlashClick() {
 
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
-      throw new Error((isGermanRegion ? "Download fehlgeschlagen: " : "Failed to download firmware: ") + res.status);
+      throw new Error("Failed to download firmware: " + res.status);
     }
 
     const buf = await res.arrayBuffer();
@@ -763,7 +747,7 @@ async function handleFlashClick() {
     // Auto-open only once per tab/session.
     if (isDriverHelpCase && !hasShownDriverHelpThisSession()) {
       markDriverHelpShownThisSession();
-      try { showDriverHelpPopup(detailsText); } catch {}
+      try { showDriverHelpPopup(); } catch {}
     }
 
     setProgress(0, genericText);
@@ -777,7 +761,7 @@ async function handleFlashClick() {
         moreLink.addEventListener("click", function (e) {
           e.preventDefault();
           if (isDriverHelpCase) {
-            try { showDriverHelpPopup(detailsText); } catch {}
+            try { showDriverHelpPopup(); } catch {}
           } else {
             // Keep legacy behavior for non-detection errors.
             alert(lastErrorMessage || detailsText);
