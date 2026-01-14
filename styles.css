@@ -35,8 +35,10 @@ button {
 
 #pageRoot {
   position: relative;
-  /* Slightly lift the whole layout when header is stacked (default). */
-  transform: translateY(-18px);
+  /* Slightly lift the whole layout when header is stacked (default).
+     Use relative positioning (top) so fixed-position modals still cover the full viewport
+     and the lift does not affect flex centering/layout calculations. */
+  top: -18px;
 }
 
 #pageFadeOverlay {
@@ -528,7 +530,7 @@ ol li::before {
 /* When header is side-by-side (small height), don't lift the content. */
 @media (max-height: 820px) {
   #pageRoot {
-    transform: none;
+    top: 0;
   }
 }
 
