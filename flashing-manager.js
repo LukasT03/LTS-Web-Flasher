@@ -4,11 +4,11 @@ window.ESPLoader = esptoolBundle.ESPLoader;
 window.ESPLoaderTransport = esptoolBundle.Transport;
 window.ESPHardReset = esptoolBundle.hardReset || null;
 
-
 const primaryLang =
   (Array.isArray(navigator.languages) && navigator.languages.length
     ? navigator.languages[0]
-    : (navigator.language || navigator.userLanguage || "")) || "";
+    : (navigator.language || navigator.userLanguage || "")) ||
+  "";
 
 // English is the default. Only switch to German if the *primary* preferred language is German.
 const isGermanRegion = /^de(-|$)/i.test(String(primaryLang).toLowerCase());
@@ -26,10 +26,51 @@ const isWindowsPlatform = (() => {
   }
 })();
 
+// Windows often struggles with 921600. 115200 is slow but safe.
+// You can try 230400 or 460800 if 115200 is too slow, but 115200 is most robust.
 const FLASH_BAUD = isWindowsPlatform ? 115200 : 921600;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// --- Helper to safely cleanup transport and close port ---
+async function cleanupLoader() {
+  if (espLoader) {
+    espLoader = null;
+  }
+  
+  // Try to disconnect transport cleanly
+  if (loaderTransport) {
+    try {
+      if (typeof loaderTransport.disconnect === "function") {
+        await loaderTransport.disconnect();
+      }
+    } catch (e) {
+      console.warn("Transport disconnect warning:", e);
+    }
+    loaderTransport = null;
+  }
+
+  // Double check: If port is still physically open (readable/writable), try to close it natively.
+  // This helps if esptool didn't close it fully.
+  if (serialPort) {
+    try {
+      // Check if streams are locked is hard in JS without try/catch logic, 
+      // but usually disconnect() handles unlocking.
+      if (serialPort.readable || serialPort.writable) {
+        await serialPort.close();
+      }
+    } catch (e) {
+      // Ignore errors here (e.g. if streams are locked, we can't force close easily)
+      console.warn("Port close warning:", e);
+    }
+  }
+
+  // Windows specifically needs a moment to release the driver handle
+  if (isWindowsPlatform) {
+    await sleep(200);
+  }
 }
 
 async function hardResetSerial(port) {
@@ -41,12 +82,14 @@ async function hardResetSerial(port) {
         await port.open({ baudRate: 115200 });
         await sleep(150);
       }
-    } catch {}
+    } catch (e) {
+       console.warn("HardReset tryOpen failed:", e);
+    }
   };
 
   // Two reset strategies because classic ESP32 DevKits (USB-UART) and native-USB
   // ESP32-S3 boards often behave differently with WebSerial signal polarity.
-  //
+  
   // Strategy A (DevKit-friendly): keep IO0 HIGH (DTR deasserted) and pulse EN via RTS.
   const pulseEnOnly = async () => {
     // release both first
@@ -118,28 +161,27 @@ function applyGermanTexts() {
   const step2El = document.getElementById("step2");
   const step3El = document.getElementById("step3");
   const step4El = document.getElementById("step4");
+  
   if (step1El) step1El.textContent = "Schließe dein Board per USB an deinen Computer an";
   if (step2El) step2El.textContent = "Drücke den Button zum Verbinden und wähle den korrekten COM-Port aus";
   if (step3El) step3El.textContent = "Wähle deine Respooler-Variante im Menü aus";
   if (step4El) step4El.textContent = "Installiere die Firmware über den Button";
-
+  
   const fwLabelEl = document.getElementById("fwLabel");
   if (fwLabelEl) fwLabelEl.textContent = "Aktuelle Firmware:";
 
   const flashBtnEl = document.getElementById("flashBtn");
   if (flashBtnEl) flashBtnEl.textContent = "Installieren";
-
+  
   const connectBtnEl = document.getElementById("connectBtn");
   if (connectBtnEl) connectBtnEl.textContent = "Board verbinden";
-
 }
 
 if (isGermanRegion) {
   applyGermanTexts();
 }
 
-const supportsWebSerial =
-  typeof navigator !== "undefined" && "serial" in navigator;
+const supportsWebSerial = typeof navigator !== "undefined" && "serial" in navigator;
 
 const connectBtn = document.getElementById("connectBtn");
 const flashBtn = document.getElementById("flashBtn");
@@ -161,7 +203,6 @@ if (progressPercent) {
 // Keep UI consistent across browsers (even if WebSerial is unsupported).
 if (connectBtn) {
   connectBtn.classList.remove("hidden");
-  // In case the HTML has `disabled` set by default, ensure it is clickable.
   connectBtn.disabled = false;
 }
 if (flashBtn) {
@@ -239,7 +280,7 @@ function setProgress(percent, labelText) {
   if (!progressWrapper || !progressBar || !progressLabel) return;
   const clamped = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
   progressBar.style.width = clamped + "%";
-
+  
   if (progressPercent) {
     progressPercent.textContent = clamped + " %";
   }
@@ -257,6 +298,8 @@ async function sendVariantOverSerial() {
     : '{"SET":{"VAR":"STD"}}\n';
 
   const start = performance.now();
+  
+  // Wait for writable stream
   while (performance.now() - start < 5000) {
     try {
       if (serialPort.writable) break;
@@ -264,13 +307,14 @@ async function sendVariantOverSerial() {
     await sleep(100);
   }
 
+  // Ensure port is open
   try {
     if (!serialPort.writable) {
       await serialPort.open({ baudRate: 115200 });
     }
   } catch (e) {
     console.error("Failed to open serial for VAR", e);
-    return;
+    // Continue anyway, maybe it was open but locked
   }
 
   try {
@@ -285,29 +329,40 @@ async function sendVariantOverSerial() {
   await sleep(200);
 }
 
+// Logic to initialise the loader.
+// CRITICAL FIX: Ensure port is closed before trying to create a new Transport
+// because esptool Transport will try to open it.
 async function ensureLoader() {
+  // If we already have a functional loader, return it.
   if (espLoader) return espLoader;
+  
   if (!serialPort) {
-    throw new Error(
-      isGermanRegion
-        ? "Keine serielle Verbindung offen"
-        : "No serial connection open"
-    );
+    throw new Error(isGermanRegion ? "Keine serielle Verbindung" : "No serial connection");
+  }
+
+  // KEY WINDOWS FIX: 
+  // If the port is currently "readable" (open), esptool's transport.connect() will fail 
+  // with "Failed to open serial port". We must close it first.
+  if (serialPort.readable || serialPort.writable) {
+    try {
+        await serialPort.close();
+        if(isWindowsPlatform) await sleep(150); 
+    } catch (e) {
+        console.warn("Could not auto-close port before ensureLoader:", e);
+    }
   }
 
   const TransportCtor = window.ESPLoaderTransport;
   const LoaderCtor = window.ESPLoader;
 
   if (!TransportCtor || !LoaderCtor) {
-    throw new Error(
-      isGermanRegion
-        ? "Flasher-Bibliothek nicht geladen"
-        : "Flasher library not loaded"
-    );
+    throw new Error(isGermanRegion ? "Flasher-Bibliothek fehlt" : "Flasher library missing");
   }
 
+  // Create transport and loader
   const transport = new TransportCtor(serialPort);
   loaderTransport = transport;
+  
   espLoader = new LoaderCtor({
     transport,
     baudrate: FLASH_BAUD,
@@ -322,21 +377,23 @@ async function ensureLoader() {
     espLoader.flashSize = "4MB";
   }
 
+  // This calls transport.connect() internally, which opens the port.
   try {
     await espLoader.main();
   } catch (err) {
     console.error("Failed to initialise loader", err);
+    // If main() failed, ensure we clean up immediately so retry works
+    await cleanupLoader(); 
     throw err;
   }
 
+  // Chip detection logic
   let chipNameUpper = "";
   try {
     if (espLoader && espLoader.chip && espLoader.chip.CHIP_NAME) {
       chipNameUpper = String(espLoader.chip.CHIP_NAME).toUpperCase();
     } else if (espLoader && (espLoader.chipFamily || espLoader.chipName)) {
-      chipNameUpper = String(
-        espLoader.chipFamily || espLoader.chipName
-      ).toUpperCase();
+      chipNameUpper = String(espLoader.chipFamily || espLoader.chipName).toUpperCase();
     }
   } catch (e) {
     console.warn("Chip name detection failed", e);
@@ -348,7 +405,7 @@ async function ensureLoader() {
       !chipNameUpper.includes("S2") &&
       !chipNameUpper.includes("S3") &&
       !chipNameUpper.includes("C3"));
-
+      
   console.log("LTS Web Flasher – simple chip check", {
     selectedValue,
     chipNameUpper,
@@ -365,13 +422,12 @@ async function ensureLoader() {
 
 async function handleConnectClick() {
   if (!supportsWebSerial || !navigator.serial || typeof navigator.serial.requestPort !== "function") {
-    const msg = isGermanRegion
-      ? "WebSerial wird nicht unterstützt."
-      : "WebSerial is not supported.";
+    const msg = isGermanRegion ? "WebSerial wird nicht unterstützt." : "WebSerial is not supported.";
     try { alert(msg); } catch {}
     setProgress(0, isGermanRegion ? "Nicht unterstützt" : "Not supported");
     return;
   }
+
   try {
     setProgress(0, isGermanRegion ? "Wähle einen seriellen Port" : "Please choose a serial port");
     const port = await navigator.serial.requestPort();
@@ -381,19 +437,19 @@ async function handleConnectClick() {
       connectBtn.disabled = true;
     }
 
+    // Try to identify the board
     try {
       setProgress(0, isGermanRegion ? "Ermittle Board…" : "Detecting board…");
+      // ensureLoader will open the port
       await ensureLoader();
     } catch (e) {
       console.error(e);
+      // Even if identification fails, we consider it "connected" enough to try flashing later
+      // provided we selected a port.
     } finally {
-      espLoader = null;
-      try {
-        if (loaderTransport && typeof loaderTransport.disconnect === "function") {
-          await loaderTransport.disconnect();
-        }
-      } catch {}
-      loaderTransport = null;
+      // Clean up after detection so the port is free for the Flash step.
+      // This is crucial. If we leave it open, the Flash step might fail to re-open it.
+      await cleanupLoader();
     }
 
     if (flashBtn) {
@@ -404,6 +460,7 @@ async function handleConnectClick() {
     setProgress(0, isGermanRegion
       ? `Erfolgreich verbunden! (${detectedBoardLabel})`
       : `Connected successfully! (${detectedBoardLabel})`);
+      
   } catch (err) {
     console.error(err);
     const detailsText = err && err.message ? err.message : String(err);
@@ -411,7 +468,7 @@ async function handleConnectClick() {
     lastErrorMessage = detailsText;
 
     setProgress(0, genericText);
-
+    
     if (progressLabel) {
       const linkLabel = isGermanRegion ? "Mehr" : "More";
       progressLabel.innerHTML = genericText + ' <a href="#" id="connectErrorMoreLink">' + linkLabel + '</a>';
@@ -424,41 +481,40 @@ async function handleConnectClick() {
         });
       }
     }
+    // If requestPort failed, re-enable connect button
+    if (connectBtn) connectBtn.disabled = false;
   }
 }
 
 async function handleFlashClick() {
-  if (!supportsWebSerial || !navigator.serial || typeof navigator.serial.requestPort !== "function") {
+  if (!supportsWebSerial) {
     setProgress(0, isGermanRegion ? "Nicht unterstützt" : "Not supported");
     return;
   }
+  
   if (!serialPort) {
-    if (flashBtn) {
-      flashBtn.disabled = true;
-    }
-    setProgress(
-      0,
-      isGermanRegion
-        ? "Bitte zuerst das Board verbinden"
-        : "Please connect the board first"
-    );
+    if (flashBtn) flashBtn.disabled = true;
+    setProgress(0, isGermanRegion ? "Bitte zuerst das Board verbinden" : "Please connect the board first");
     return;
   }
+  
   if (!flashBtn) return;
 
   flashBtn.disabled = true;
   setProgress(0, isGermanRegion ? "Wird initialisiert, bitte warten..." : "Initializing, please wait...");
-  if (progressBar) {
-    progressBar.style.background = "#0E7AFE";
-  }
-  if (varSeg) {
-    varSeg.classList.add("is-disabled");
-  }
+  
+  if (progressBar) progressBar.style.background = "#0E7AFE";
+  if (varSeg) varSeg.classList.add("is-disabled");
 
   try {
-    const loader = await ensureLoader();
-    const url = BIN_URLS[selectedValue] || BIN_URLS.dev;
+    // 1. Ensure any previous connection is fully dead before starting
+    await cleanupLoader();
 
+    // 2. Load the flash tool (this will re-open the port)
+    const loader = await ensureLoader();
+    
+    // 3. Download Firmware
+    const url = BIN_URLS[selectedValue] || BIN_URLS.dev;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
       throw new Error((isGermanRegion ? "Download fehlgeschlagen: " : "Failed to download firmware: ") + res.status);
@@ -468,6 +524,7 @@ async function handleFlashClick() {
     const u8 = new Uint8Array(buf);
     const dataStr = loader.ui8ToBstr(u8);
 
+    // 4. Write Flash
     await loader.writeFlash({
       fileArray: [{ address: 0x0, data: dataStr }],
       flashMode: "keep",
@@ -477,33 +534,30 @@ async function handleFlashClick() {
       compress: true,
       reportProgress(fileIndex, written, total) {
         const pct = total > 0 ? Math.round((written / total) * 100) : 0;
-        const msg = isGermanRegion
-          ? "Firmware wird installiert..."
-          : "Flashing firmware...";
+        const msg = isGermanRegion ? "Firmware wird installiert..." : "Flashing firmware...";
         setProgress(pct, msg);
       }
     });
 
-    try {
-      if (loaderTransport && typeof loaderTransport.disconnect === "function") {
-        await loaderTransport.disconnect();
-      }
-    } catch (e) {
-      console.error("Failed to disconnect transport", e);
-    }
-    espLoader = null;
-    loaderTransport = null;
-
-    await sleep(500);
-
+    // 5. Cleanup Transport (Reset triggers need a clean state or specific handling)
+    // We disconnect here so we can do the raw serial reset afterwards
+    await cleanupLoader();
+    
+    // 6. Post-Flash Configuration
     setProgress(100, isGermanRegion ? "Konfiguration wird übertragen…" : "Applying configuration…");
 
+    // Perform Hard Reset (Toggles DTR/RTS)
     await hardResetSerial(serialPort);
     await sleep(500);
+    
+    // Send Variant JSON
     await sendVariantOverSerial();
     await sleep(150);
+    
+    // Final Reset
     await hardResetSerial(serialPort);
 
+    // Done
     setProgress(100, isGermanRegion ? "Erfolgreich installiert!" : "Flashed successfully!");
     if (progressBar) {
       progressBar.style.background = "rgb(52,199,89)";
@@ -520,22 +574,28 @@ async function handleFlashClick() {
       if (progressLabel) {
         progressLabel.textContent = (isGermanRegion ? "Bereit für Verbindung" : "Ready for connection");
       }
+      // Re-enable UI
+      if (connectBtn) {
+          connectBtn.disabled = false;
+          connectBtn.textContent = isGermanRegion ? "Board verbinden" : "Connect Board";
+      }
+      if (flashBtn) flashBtn.disabled = true; // Force reconnect/check for next flash usually safer
+      if (varSeg) varSeg.classList.remove("is-disabled");
+
     }, 5000);
+
   } catch (err) {
     console.error(err);
     const detailsText = err && err.message ? err.message : String(err);
 
     let genericText;
-    if (detailsText.includes(isGermanRegion ? "Download fehlgeschlagen" : "Failed to download firmware")) {
-      genericText = isGermanRegion
-        ? "Download fehlgeschlagen!"
-        : "Failed to download firmware!";
+    if (detailsText.includes("Download") || detailsText.includes("fetch")) {
+      genericText = isGermanRegion ? "Download fehlgeschlagen!" : "Failed to download firmware!";
     } else {
       genericText = isGermanRegion ? "Fehler beim Flashen!" : "Flash failed!";
     }
 
     lastErrorMessage = detailsText;
-
     setProgress(0, genericText);
 
     if (progressLabel) {
@@ -550,30 +610,16 @@ async function handleFlashClick() {
         });
       }
     }
-  } finally {
-    try {
-      if (loaderTransport && typeof loaderTransport.disconnect === "function") {
-        await loaderTransport.disconnect();
-      } else if (serialPort) {
-        await serialPort.close();
-      }
-    } catch (closeErr) {
-      console.error("Failed to close serial port or transport", closeErr);
-    }
-    serialPort = null;
-    espLoader = null;
-    loaderTransport = null;
-
+    
+    // Ensure we clean up on error too
+    await cleanupLoader();
+    
+    // Reset UI state
     if (connectBtn) {
-      connectBtn.textContent = isGermanRegion ? "Board verbinden" : "Connect Board";
       connectBtn.disabled = false;
+      connectBtn.textContent = isGermanRegion ? "Board verbinden" : "Connect Board";
     }
-    if (flashBtn) {
-      flashBtn.disabled = true;
-    }
-    if (varSeg) {
-      varSeg.classList.remove("is-disabled");
-    }
+    if (varSeg) varSeg.classList.remove("is-disabled");
   }
 }
 
