@@ -318,8 +318,8 @@ async function ensureLoader() {
   try {
     const timeoutErr = new Error(
       isGermanRegion
-        ? "Kein ESP32. Bitte richtigen Port wählen."
-        : "No ESP32. Please choose the correct port."
+        ? "Es wurde kein ESP32 erkannt. Bitte richtigen Port wählen."
+        : "No ESP32 detected. Please choose the correct serial port."
     );
 
     // If the selected port is not an ESP device, sync can hang for a long time on some systems.
@@ -347,8 +347,8 @@ async function ensureLoader() {
   if (!chipNameUpper || !chipNameUpper.includes("ESP32")) {
     throw new Error(
       isGermanRegion
-        ? `Kein ESP32. Bitte richtigen Port wählen.`
-        : `No ESP32. Please choose the correct port.`
+        ? `Es wurde kein ESP32 erkannt. Bitte richtigen Port wählen.`
+        : `No ESP32 detected. Please choose the correct serial port.`
     );
   }
 
