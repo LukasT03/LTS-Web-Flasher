@@ -17,6 +17,14 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function withTimeout(promise, ms, timeoutError) {
+  let t;
+  const timeoutPromise = new Promise((_, reject) => {
+    t = setTimeout(() => reject(timeoutError), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(t));
+}
+
 async function hardResetSerial(port) {
   if (!port || !port.setSignals) return;
 
@@ -308,7 +316,15 @@ async function ensureLoader() {
   }
 
   try {
-    await espLoader.main();
+    const timeoutErr = new Error(
+      isGermanRegion
+        ? "Kein ESP32. Bitte richtigen Port wählen."
+        : "No ESP32. Please choose the correct port."
+    );
+
+    // If the selected port is not an ESP device, sync can hang for a long time on some systems.
+    // Keep this short so the UI never gets stuck on “Detecting board…”.
+    await withTimeout(espLoader.main(), 8000, timeoutErr);
   } catch (err) {
     console.error("Failed to initialise loader", err);
     throw err;
@@ -331,8 +347,8 @@ async function ensureLoader() {
   if (!chipNameUpper || !chipNameUpper.includes("ESP32")) {
     throw new Error(
       isGermanRegion
-        ? `Kein ESP32 erkannt. Bitte den richtigen seriellen Port wählen.`
-        : `No ESP32 detected. Please choose the correct serial port.`
+        ? `Kein ESP32. Bitte richtigen Port wählen.`
+        : `No ESP32. Please choose the correct port.`
     );
   }
 
