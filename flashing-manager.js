@@ -49,7 +49,7 @@ function isLikelyDriverOrPortIssueMessage(msg) {
 function buildDriverHelpData() {
   const title = isGermanRegion ? "Kein ESP32 Chip erkannt" : "ESP32 not detected";
   const body = isGermanRegion
-    ? "Am ausgewählten Port ist kein ESP32 basierted Board angeschlossen. Es ist möglich, dass der korrekte Port aufgrund fehlender Treiber nicht erkannt wird. Der korrekte Port würde so oder so ähnlich heißen:"
+    ? "Am ausgewählten Port ist kein ESP32 basiertes Board angeschlossen. Es ist möglich, dass der korrekte Port aufgrund fehlender Treiber nicht erkannt wird. Der korrekte Port würde so oder so ähnlich heißen:"
     : "No ESP32-based board was found on the selected port. If the correct port is missing from the list, the required USB-to-serial driver may not be installed. The correct port often looks like:";
 
   const portExamples = [
