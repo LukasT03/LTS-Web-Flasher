@@ -5,11 +5,28 @@ window.ESPLoaderTransport = esptoolBundle.Transport;
 window.ESPHardReset = esptoolBundle.hardReset || null;
 
 
-const userLang = navigator.language || navigator.userLanguage || "";
-const langCandidates = (navigator.languages && navigator.languages.length)
-  ? navigator.languages
-  : [userLang];
-const isGermanRegion = langCandidates.some(l => /^de(-|$)/i.test(l));
+const primaryLang =
+  (Array.isArray(navigator.languages) && navigator.languages.length
+    ? navigator.languages[0]
+    : (navigator.language || navigator.userLanguage || "")) || "";
+
+// English is the default. Only switch to German if the *primary* preferred language is German.
+const isGermanRegion = /^de(-|$)/i.test(String(primaryLang).toLowerCase());
+
+// WebSerial on Windows can be flaky when esptool-js tries to switch to very high baud rates.
+// Default to a conservative baud on Windows to improve reliability.
+const isWindowsPlatform = (() => {
+  try {
+    const platform = (navigator.userAgentData && navigator.userAgentData.platform)
+      ? String(navigator.userAgentData.platform)
+      : String(navigator.userAgent || "");
+    return /windows/i.test(platform);
+  } catch {
+    return false;
+  }
+})();
+
+const FLASH_BAUD = isWindowsPlatform ? 115200 : 921600;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -293,7 +310,7 @@ async function ensureLoader() {
   loaderTransport = transport;
   espLoader = new LoaderCtor({
     transport,
-    baudrate: 921600,
+    baudrate: FLASH_BAUD,
     terminal: {
       clean() {},
       write() {},
