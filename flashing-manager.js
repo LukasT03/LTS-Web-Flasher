@@ -85,6 +85,22 @@ function buildDriverHelpData(detailsText) {
   };
 }
 
+const DRIVER_HELP_SESSION_KEY = "lts_driver_help_shown";
+
+function hasShownDriverHelpThisSession() {
+  try {
+    return sessionStorage.getItem(DRIVER_HELP_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markDriverHelpShownThisSession() {
+  try {
+    sessionStorage.setItem(DRIVER_HELP_SESSION_KEY, "1");
+  } catch {}
+}
+
 
 function showDriverHelpPopup(detailsText) {
   const data = buildDriverHelpData(detailsText);
@@ -503,7 +519,7 @@ async function ensureLoader() {
 
     // If the selected port is not an ESP device, sync can hang for a long time on some systems.
     // Keep this short so the UI never gets stuck on “Detecting board…”.
-    await withTimeout(espLoader.main(), 8000, timeoutErr);
+    await withTimeout(espLoader.main(), 6000, timeoutErr);
   } catch (err) {
     console.error("Failed to initialise loader", err);
     throw err;
@@ -627,7 +643,12 @@ async function handleConnectClick() {
     const detailsText = err && err.message ? err.message : String(err);
     const genericText = isGermanRegion ? "Verbindung fehlgeschlagen!" : "Connection failed!";
     lastErrorMessage = detailsText;
-    if (isLikelyDriverOrPortIssueMessage(detailsText)) {
+
+    const isDriverHelpCase = isLikelyDriverOrPortIssueMessage(detailsText);
+
+    // Auto-open only once per tab/session.
+    if (isDriverHelpCase && !hasShownDriverHelpThisSession()) {
+      markDriverHelpShownThisSession();
       try { showDriverHelpPopup(detailsText); } catch {}
     }
 
@@ -641,7 +662,12 @@ async function handleConnectClick() {
       if (moreLink) {
         moreLink.addEventListener("click", function (e) {
           e.preventDefault();
-          alert(lastErrorMessage || detailsText);
+          if (isDriverHelpCase) {
+            try { showDriverHelpPopup(detailsText); } catch {}
+          } else {
+            // Keep legacy behavior for non-detection errors.
+            alert(lastErrorMessage || detailsText);
+          }
         });
       }
     }
@@ -763,6 +789,14 @@ async function handleFlashClick() {
 
     lastErrorMessage = detailsText;
 
+    const isDriverHelpCase = isLikelyDriverOrPortIssueMessage(detailsText);
+
+    // Auto-open only once per tab/session.
+    if (isDriverHelpCase && !hasShownDriverHelpThisSession()) {
+      markDriverHelpShownThisSession();
+      try { showDriverHelpPopup(detailsText); } catch {}
+    }
+
     setProgress(0, genericText);
 
     if (progressLabel) {
@@ -773,7 +807,12 @@ async function handleFlashClick() {
       if (moreLink) {
         moreLink.addEventListener("click", function (e) {
           e.preventDefault();
-          alert(lastErrorMessage || detailsText);
+          if (isDriverHelpCase) {
+            try { showDriverHelpPopup(detailsText); } catch {}
+          } else {
+            // Keep legacy behavior for non-detection errors.
+            alert(lastErrorMessage || detailsText);
+          }
         });
       }
     }
