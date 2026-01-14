@@ -53,10 +53,10 @@ function isLikelyDriverOrPortIssueMessage(msg) {
 }
 
 function buildDriverHelpData() {
-  const title = isGermanRegion ? "Kein ESP32 Chip erkannt" : "ESP32 not detected";
+  const title = isGermanRegion ? "Kein ESP32 Chip erkannt!" : "ESP32 not detected!";
   const body = isGermanRegion
-    ? "Am ausgewählten Port ist kein ESP32 basiertes Board angeschlossen. Es ist möglich, dass der korrekte Port aufgrund fehlender Treiber nicht erkannt wird. Der korrekte Port würde so oder so ähnlich heißen:"
-    : "No ESP32-based board was found on the selected port. If the correct port is missing from the list, the required USB-to-serial driver may not be installed. The correct port often looks like:";
+    ? "Am ausgewählten Port ist kein ESP32-basiertes Board angeschlossen. Es ist möglich, dass der richtige Port wegen fehlender Treiber nicht angezeigt wird. Der korrekte Port würde ungefähr so heißen:"
+    : "No ESP32-based board is connected to the selected port. It’s possible the correct port isn’t showing up because the required drivers are missing. The correct port would be named something like:";
 
   const portExamples = [
     "CP2102 USB to UART Bridge Controller",
@@ -66,14 +66,14 @@ function buildDriverHelpData() {
 
   const linksTitle = isGermanRegion ? "Treiber-Downloads" : "Driver downloads";
   const links = [
-    { label: isGermanRegion ? "CP210x (am häufigsten)" : "CP210x (most common)", href: DRIVER_HELP_LINKS.cp210x },
+    { label: isGermanRegion ? "CP210x (häufig)" : "CP210x (common)", href: DRIVER_HELP_LINKS.cp210x },
     { label: isGermanRegion ? "CH340/CH341" : "CH340/CH341", href: DRIVER_HELP_LINKS.ch340 },
     { label: isGermanRegion ? "FTDI (selten)" : "FTDI (rare)", href: DRIVER_HELP_LINKS.ftdi },
   ];
 
   const hint = isGermanRegion
-    ? "Tipp: Verwende ein USB-Kabel, das Daten übertragen kann und benutze keinen Hub oder Adapter."
-    : "Tip: Use a USB cable that supports data transfer (not charge-only) and connect directly to the PC (no hub or adapter).";
+    ? "Tipp: Nutze ein USB-Datenkabel und schließe es direkt am Computer an (ohne Hub/Adapter)."
+    : "Tip: Use a USB data cable and connect it directly to your computer (no hub/adapter).";
 
   return {
     title,
