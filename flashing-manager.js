@@ -69,9 +69,6 @@ function buildDriverHelpData(detailsText) {
     ? "Tipp: Nutze ein Daten-USB-Kabel (nicht nur Strom) und stecke direkt am PC (kein Hub)."
     : "Tip: Use a data USB cable (not power-only) and connect directly to the PC (no hub).";
 
-  const detailsLabel = isGermanRegion ? "Details" : "Details";
-  const closeLabel = isGermanRegion ? "Schließen" : "Close";
-
   return {
     title,
     body,
@@ -79,9 +76,6 @@ function buildDriverHelpData(detailsText) {
     linksTitle,
     links,
     hint,
-    detailsLabel,
-    closeLabel,
-    detailsText: String(detailsText || "").trim(),
   };
 }
 
@@ -130,10 +124,9 @@ function showDriverHelpPopup(detailsText) {
     return;
   }
 
-  // NOTE: This modal must be provided in HTML later.
+  // NOTE: This modal must be provided in HTML.
   // Required IDs: driverHelpModal, driverHelpTitle, driverHelpBody, driverHelpPorts,
-  //              driverHelpLinksTitle, driverHelpLinks, driverHelpHint,
-  //              driverHelpDetailsBtn, driverHelpCloseBtn, driverHelpDetails
+  //              driverHelpLinksTitle, driverHelpLinks, driverHelpHint
   const backdrop = document.getElementById("driverHelpModal");
   if (!backdrop) {
     fallbackAlert();
@@ -149,22 +142,12 @@ function showDriverHelpPopup(detailsText) {
       backdrop.classList.remove("is-open");
     };
 
-    const closeBtn = document.getElementById("driverHelpCloseBtn");
     const closeX = backdrop.querySelector(".modal-close");
-    if (closeBtn) closeBtn.addEventListener("click", hide);
     if (closeX) closeX.addEventListener("click", hide);
 
     backdrop.addEventListener("click", (e) => {
       if (e.target === backdrop) hide();
     });
-
-    const detailsBtn = document.getElementById("driverHelpDetailsBtn");
-    const detailsPre = document.getElementById("driverHelpDetails");
-    if (detailsBtn && detailsPre) {
-      detailsBtn.addEventListener("click", () => {
-        detailsPre.hidden = !detailsPre.hidden;
-      });
-    }
   }
 
   const titleEl = document.getElementById("driverHelpTitle");
@@ -173,26 +156,12 @@ function showDriverHelpPopup(detailsText) {
   const linksTitleEl = document.getElementById("driverHelpLinksTitle");
   const linksEl = document.getElementById("driverHelpLinks");
   const hintEl = document.getElementById("driverHelpHint");
-  const detailsBtn = document.getElementById("driverHelpDetailsBtn");
-  const closeBtn = document.getElementById("driverHelpCloseBtn");
-  const detailsPre = document.getElementById("driverHelpDetails");
 
   if (titleEl) titleEl.textContent = data.title;
   if (bodyEl) bodyEl.textContent = data.body;
   if (linksTitleEl) linksTitleEl.textContent = data.linksTitle;
   if (hintEl) hintEl.textContent = data.hint;
 
-  if (closeBtn) closeBtn.textContent = data.closeLabel;
-
-  if (detailsPre) {
-    detailsPre.textContent = data.detailsText;
-    detailsPre.hidden = true;
-  }
-
-  if (detailsBtn) {
-    detailsBtn.textContent = data.detailsLabel;
-    detailsBtn.disabled = !data.detailsText;
-  }
 
   if (portsEl) {
     portsEl.innerHTML = "";
@@ -207,7 +176,7 @@ function showDriverHelpPopup(detailsText) {
     linksEl.innerHTML = "";
     data.links.forEach((l) => {
       const a = document.createElement("a");
-      a.className = "driver-help-link lts-btn";
+      a.className = "mini-btn compact driver-help-link";
       a.href = l.href;
       a.target = "_blank";
       a.rel = "noopener";

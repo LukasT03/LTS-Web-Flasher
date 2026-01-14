@@ -703,20 +703,14 @@ ol li::before {
   margin-top: 14px;
 }
 
-.driver-help-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 12px;
+
+.driver-help-link {
+  text-decoration: none;
+  color: rgb(var(--text));
 }
 
-.driver-help-details {
-  margin: 10px 0 0 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-size: 0.95rem;
-  opacity: 0.8;
+.driver-help-link:visited {
+  color: rgb(var(--text));
 }
 
 @media (max-width: 450px) {
