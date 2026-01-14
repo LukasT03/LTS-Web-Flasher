@@ -561,7 +561,7 @@ ol li::before {
   width: min(410px, 100%);
   background: #ffffff;
   border-radius: 29px;
-  padding: 1rem 1rem 0.65rem 1rem;
+  padding: 1rem 1rem 0.45rem 1rem;
   box-shadow: 0 18px 50px rgba(0,0,0,0.22);
   border: 1px solid #d1d5db; /* match .section-divider */
   position: relative;
@@ -691,6 +691,7 @@ ol li::before {
 .driver-help-links-title {
   font-weight: 600;
   margin-bottom: 10px;
+  font-size: 1.1rem; /* match .lts-btn */
 }
 
 .driver-help-links {
@@ -719,5 +720,8 @@ ol li::before {
   }
   .modal-desc {
     font-size: 1.0rem;
+  }
+  .driver-help-links-title {
+    font-size: 1.0rem; /* match .lts-btn on small screens */
   }
 }

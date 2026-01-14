@@ -64,7 +64,7 @@ function buildDriverHelpData() {
     "USB JTAG/serial debug unit",
   ];
 
-  const linksTitle = isGermanRegion ? "Treiber-Downloads" : "Driver downloads";
+  const linksTitle = isGermanRegion ? "Treiber-Downloads:" : "Driver downloads:";
   const links = [
     { label: isGermanRegion ? "CP210x (häufig)" : "CP210x (common)", href: DRIVER_HELP_LINKS.cp210x },
     { label: isGermanRegion ? "CH340/CH341" : "CH340/CH341", href: DRIVER_HELP_LINKS.ch340 },
