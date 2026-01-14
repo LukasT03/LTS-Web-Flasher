@@ -17,12 +17,191 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+
 function withTimeout(promise, ms, timeoutError) {
   let t;
   const timeoutPromise = new Promise((_, reject) => {
     t = setTimeout(() => reject(timeoutError), ms);
   });
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(t));
+}
+
+const DRIVER_HELP_LINKS = {
+  cp210x: "https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers",
+  ch340: "https://www.wch-ic.com/downloads/ch341ser_exe.html",
+  ftdi: "https://ftdichip.com/drivers/vcp-drivers/",
+};
+
+const DRIVER_HELP_TRIGGERS = [
+  /\bno\s*esp32\b/i,
+  /\bkein\s*esp32\b/i,
+  /\bnot\s*detected\b/i,
+  /\bnicht\s*erkannt\b/i,
+  /\btimeout\b/i,
+  /\bzeitüberschreitung\b/i,
+];
+
+function isLikelyDriverOrPortIssueMessage(msg) {
+  const text = String(msg || "");
+  return DRIVER_HELP_TRIGGERS.some((re) => re.test(text));
+}
+
+function buildDriverHelpData(detailsText) {
+  const title = isGermanRegion ? "ESP32 nicht erkannt" : "ESP32 not detected";
+  const body = isGermanRegion
+    ? "Wenn dein ESP32/Respooler hier nicht erkannt wird, liegt das meistens an fehlenden USB-Seriell-Treibern oder am falschen COM-Port (z.B. Bluetooth). Der richtige Port heißt häufig so ähnlich:"
+    : "If your ESP32/Respooler is not detected here, it is usually caused by missing USB-serial drivers or selecting the wrong COM port (e.g. Bluetooth). The correct port often looks like:";
+
+  const portExamples = [
+    "Silicon Labs CP210x USB to UART Bridge (COM…) / CP2102",
+    "USB-SERIAL CH340 (COM…) / CH341",
+    "FT232R USB UART (COM…) / FTDI",
+  ];
+
+  const linksTitle = isGermanRegion ? "Treiber-Downloads" : "Driver downloads";
+  const links = [
+    { label: "CP210x (Silicon Labs)", href: DRIVER_HELP_LINKS.cp210x },
+    { label: "CH340/CH341 (WCH)", href: DRIVER_HELP_LINKS.ch340 },
+    { label: "FTDI (VCP Drivers)", href: DRIVER_HELP_LINKS.ftdi },
+  ];
+
+  const hint = isGermanRegion
+    ? "Tipp: Nutze ein Daten-USB-Kabel (nicht nur Strom) und stecke direkt am PC (kein Hub)."
+    : "Tip: Use a data USB cable (not power-only) and connect directly to the PC (no hub).";
+
+  const detailsLabel = isGermanRegion ? "Details" : "Details";
+  const closeLabel = isGermanRegion ? "Schließen" : "Close";
+
+  return {
+    title,
+    body,
+    portExamples,
+    linksTitle,
+    links,
+    hint,
+    detailsLabel,
+    closeLabel,
+    detailsText: String(detailsText || "").trim(),
+  };
+}
+
+
+function showDriverHelpPopup(detailsText) {
+  const data = buildDriverHelpData(detailsText);
+
+  // Fallback (until HTML/CSS is wired): show an alert.
+  const fallbackAlert = () => {
+    try {
+      alert(
+        [
+          data.title,
+          "",
+          data.body,
+          "",
+          ...data.portExamples,
+          "",
+          `${data.linksTitle}:`,
+          ...data.links.map((l) => `${l.label}: ${l.href}`),
+          "",
+          data.hint,
+        ].join("\n")
+      );
+    } catch {}
+  };
+
+  if (typeof document === "undefined" || !document.body) {
+    fallbackAlert();
+    return;
+  }
+
+  // NOTE: This modal must be provided in HTML later.
+  // Required IDs: driverHelpModal, driverHelpTitle, driverHelpBody, driverHelpPorts,
+  //              driverHelpLinksTitle, driverHelpLinks, driverHelpHint,
+  //              driverHelpDetailsBtn, driverHelpCloseBtn, driverHelpDetails
+  const backdrop = document.getElementById("driverHelpModal");
+  if (!backdrop) {
+    fallbackAlert();
+    return;
+  }
+
+  // Wire events once.
+  if (!backdrop.dataset.wired) {
+    backdrop.dataset.wired = "1";
+
+    const hide = () => {
+      backdrop.hidden = true;
+      backdrop.classList.remove("is-open");
+    };
+
+    const closeBtn = document.getElementById("driverHelpCloseBtn");
+    const closeX = backdrop.querySelector(".modal-close");
+    if (closeBtn) closeBtn.addEventListener("click", hide);
+    if (closeX) closeX.addEventListener("click", hide);
+
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) hide();
+    });
+
+    const detailsBtn = document.getElementById("driverHelpDetailsBtn");
+    const detailsPre = document.getElementById("driverHelpDetails");
+    if (detailsBtn && detailsPre) {
+      detailsBtn.addEventListener("click", () => {
+        detailsPre.hidden = !detailsPre.hidden;
+      });
+    }
+  }
+
+  const titleEl = document.getElementById("driverHelpTitle");
+  const bodyEl = document.getElementById("driverHelpBody");
+  const portsEl = document.getElementById("driverHelpPorts");
+  const linksTitleEl = document.getElementById("driverHelpLinksTitle");
+  const linksEl = document.getElementById("driverHelpLinks");
+  const hintEl = document.getElementById("driverHelpHint");
+  const detailsBtn = document.getElementById("driverHelpDetailsBtn");
+  const closeBtn = document.getElementById("driverHelpCloseBtn");
+  const detailsPre = document.getElementById("driverHelpDetails");
+
+  if (titleEl) titleEl.textContent = data.title;
+  if (bodyEl) bodyEl.textContent = data.body;
+  if (linksTitleEl) linksTitleEl.textContent = data.linksTitle;
+  if (hintEl) hintEl.textContent = data.hint;
+
+  if (closeBtn) closeBtn.textContent = data.closeLabel;
+
+  if (detailsPre) {
+    detailsPre.textContent = data.detailsText;
+    detailsPre.hidden = true;
+  }
+
+  if (detailsBtn) {
+    detailsBtn.textContent = data.detailsLabel;
+    detailsBtn.disabled = !data.detailsText;
+  }
+
+  if (portsEl) {
+    portsEl.innerHTML = "";
+    data.portExamples.forEach((p) => {
+      const li = document.createElement("li");
+      li.textContent = p;
+      portsEl.appendChild(li);
+    });
+  }
+
+  if (linksEl) {
+    linksEl.innerHTML = "";
+    data.links.forEach((l) => {
+      const a = document.createElement("a");
+      a.className = "driver-help-link lts-btn";
+      a.href = l.href;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = l.label;
+      linksEl.appendChild(a);
+    });
+  }
+
+  backdrop.hidden = false;
+  backdrop.classList.add("is-open");
 }
 
 async function hardResetSerial(port) {
@@ -448,6 +627,9 @@ async function handleConnectClick() {
     const detailsText = err && err.message ? err.message : String(err);
     const genericText = isGermanRegion ? "Verbindung fehlgeschlagen!" : "Connection failed!";
     lastErrorMessage = detailsText;
+    if (isLikelyDriverOrPortIssueMessage(detailsText)) {
+      try { showDriverHelpPopup(detailsText); } catch {}
+    }
 
     setProgress(0, genericText);
 

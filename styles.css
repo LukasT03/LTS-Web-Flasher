@@ -531,3 +531,197 @@ ol li::before {
     transform: none;
   }
 }
+
+/* --- Modal base (shared) --- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 10000; /* above #pageFadeOverlay (9999) */
+}
+
+@media (prefers-color-scheme: dark) {
+  .modal-backdrop {
+    background: rgba(0,0,0,0.62);
+  }
+}
+
+/* JS toggles: `backdrop.hidden = false` + `.is-open` */
+.modal-backdrop.is-open {
+  display: flex;
+}
+
+.modal {
+  width: min(410px, 100%);
+  background: #ffffff;
+  border-radius: 29px;
+  padding: 1rem;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.22);
+  border: 1px solid #d1d5db; /* match .section-divider */
+  position: relative;
+  box-sizing: border-box;
+}
+
+@media (prefers-color-scheme: dark) {
+  .modal {
+    background: rgb(28,28,30);
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 0.75rem;
+  position: relative;
+  padding-right: 44px; /* reserve space for close button */
+}
+
+.modal-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 30px; /* match close button height */
+}
+
+.icon-btn {
+  border: none;
+  background: #e5e7eb;
+  color: rgb(var(--text));
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .icon-btn {
+    background: rgba(255,255,255,0.14);
+  }
+}
+
+/* For the SVG-based close button used in your Web Control modals */
+.icon-btn.modal-close {
+  padding: 0;
+  font-size: 0;
+  line-height: 0;
+}
+
+.icon-btn.modal-close svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  transform: none;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+/* Description paragraph style (used in modals) */
+.modal-desc {
+  margin: 0 0 14px 0;
+  color: rgb(var(--text) / 0.65);
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+/* Small action buttons (mirrors Web Control) */
+.mini-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  font-size: 1.0rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #e5e7eb;
+  color: rgb(var(--text));
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mini-btn {
+    background: rgba(255,255,255,0.14);
+  }
+}
+
+.mini-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mini-btn.compact {
+  height: 26px;
+  padding: 0 0.75rem;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* --- Driver help popup specifics --- */
+.driver-help-port-list {
+  margin: 0;
+  padding-left: 18px;
+  color: rgb(var(--text) / 0.85);
+  line-height: 1.35;
+}
+
+.driver-help-links-title {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.driver-help-links {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.driver-help-hint {
+  margin-top: 14px;
+}
+
+.driver-help-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.driver-help-details {
+  margin: 10px 0 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.95rem;
+  opacity: 0.8;
+}
+
+@media (max-width: 450px) {
+  .modal-title {
+    font-size: 1.1rem;
+  }
+  .modal-desc {
+    font-size: 1.0rem;
+  }
+}

@@ -121,6 +121,39 @@
 
   </div>
 
+  <!-- Driver help modal (shown when no ESP32 is detected / likely missing drivers) -->
+  <div id="driverHelpModal" class="modal-backdrop" hidden>
+    <div class="modal" role="document">
+      <button type="button" class="icon-btn modal-close" aria-label="Close">
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+
+      <div class="modal-header">
+        <h2 id="driverHelpTitle" class="modal-title">ESP32 not detected</h2>
+      </div>
+
+      <p id="driverHelpBody" class="modal-desc"></p>
+
+      <ul id="driverHelpPorts" class="driver-help-port-list"></ul>
+
+      <hr class="section-divider">
+
+      <div id="driverHelpLinksTitle" class="driver-help-links-title"></div>
+      <div id="driverHelpLinks" class="driver-help-links"></div>
+
+      <p id="driverHelpHint" class="modal-desc driver-help-hint"></p>
+
+      <div class="driver-help-actions">
+        <button id="driverHelpDetailsBtn" type="button" class="mini-btn compact driver-help-details-btn">Details</button>
+        <button id="driverHelpCloseBtn" type="button" class="mini-btn compact driver-help-close-btn">Close</button>
+      </div>
+
+      <pre id="driverHelpDetails" class="driver-help-details" hidden></pre>
+    </div>
+  </div>
+
   <script>
     window.addEventListener("load", () => {
       // Show a blocking overlay when the browser cannot use WebSerial.
