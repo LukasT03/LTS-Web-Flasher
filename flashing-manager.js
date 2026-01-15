@@ -457,7 +457,7 @@ async function ensureLoader() {
     if (!serialPort.readable || !serialPort.writable) {
       await withTimeout(
         serialPort.open({ baudRate: 115200 }),
-        2500,
+        6000,
         new Error("Serial open timeout")
       );
     }
@@ -478,7 +478,9 @@ async function ensureLoader() {
   loaderTransport = transport;
   espLoader = new LoaderCtor({
     transport,
-    baudrate: 921600,
+    // Use a conservative baudrate for detection/sync (more reliable on Windows).
+    // Flash speed is still fine for typical firmware sizes.
+    baudrate: 115200,
     terminal: {
       clean() {},
       write() {},
@@ -493,29 +495,9 @@ async function ensureLoader() {
   try {
     const timeoutErr = new Error("No ESP32 detected (sync timeout)");
 
-    // If the selected port is not an ESP device, sync can hang for a long time on some systems.
-    // Keep this short so the UI never gets stuck on “Detecting board…”.
-    //
-    // IMPORTANT: Sometimes the promise doesn't settle even if we race a timeout.
-    // In those cases, we additionally force-close the serial port to break any
-    // stuck read/write waits inside the underlying transport.
-    let watchdogFired = false;
-    const watchdog = setTimeout(() => {
-      watchdogFired = true;
-      // Fire-and-forget; we only need to break the hang.
-      forceCloseSerialForTimeout("sync watchdog");
-    }, 6500);
-
-    try {
-      await withTimeout(espLoader.main(), 6000, timeoutErr);
-    } finally {
-      clearTimeout(watchdog);
-    }
-
-    // If the watchdog fired, treat it as a timeout regardless of whether main() eventually settles.
-    if (watchdogFired) {
-      throw timeoutErr;
-    }
+    // On some Windows setups, sync can be slow or stall. Use a longer timeout,
+    // and if it fails we hard-close the port to break any stuck reads.
+    await withTimeout(espLoader.main(), 9000, timeoutErr);
   } catch (err) {
     console.error("Failed to initialise loader", err);
     try { await forceCloseSerialForTimeout("sync failed"); } catch {}
@@ -535,7 +517,6 @@ async function ensureLoader() {
     console.warn("Chip name detection failed", e);
   }
 
-  // Strict validation: if we can't identify an ESP chip, treat this as a wrong port selection.
   if (!chipNameUpper || !chipNameUpper.includes("ESP32")) {
     throw new Error("No ESP32 detected (invalid chip)");
   }
@@ -557,7 +538,6 @@ async function ensureLoader() {
   if (autoSelected !== selectedValue) {
     applyBoardSelection(autoSelected);
   }
-
   return espLoader;
 }
 
@@ -589,7 +569,11 @@ async function handleConnectClick() {
 
     // Strict check: only succeed if we can sync and identify an ESP32-family chip.
     setProgress(0, isGermanRegion ? "Ermittle Board…" : "Detecting board…");
-    await ensureLoader();
+    await withTimeout(
+      ensureLoader(),
+      12000,
+      new Error("No ESP32 detected (connect timeout)")
+    );
 
     // Clean up loader/transport so the port can be re-opened cleanly during flashing.
     try {
@@ -639,7 +623,6 @@ async function handleConnectClick() {
 
     const isDriverHelpCase = isLikelyDriverOrPortIssueMessage(detailsText);
 
-    // Auto-open only once per tab/session.
     if (isDriverHelpCase && !hasShownDriverHelpThisSession()) {
       markDriverHelpShownThisSession();
       try { showDriverHelpPopup(); } catch {}
@@ -658,14 +641,11 @@ async function handleConnectClick() {
           if (isDriverHelpCase) {
             try { showDriverHelpPopup(); } catch {}
           } else {
-            // Keep legacy behavior for non-detection errors.
             alert(lastErrorMessage || detailsText);
           }
         });
       }
     }
-
-    // Force the user to pick a port again.
     serialPort = null;
 
     if (connectBtn) connectBtn.disabled = false;
@@ -703,6 +683,15 @@ async function handleFlashClick() {
 
   try {
     const loader = await ensureLoader();
+    // Speed up flashing: keep detection/sync conservative, then switch to a higher baud for data transfer.
+    try {
+      if (loader && typeof loader.changeBaud === "function") {
+        loader.baudrate = 921600;
+        await loader.changeBaud();
+      }
+    } catch (e) {
+      console.warn("Failed to increase baudrate for flashing, continuing at default", e);
+    }
     const url = BIN_URLS[selectedValue] || BIN_URLS.dev;
 
     const res = await fetch(url, { cache: "no-store" });
@@ -739,6 +728,22 @@ async function handleFlashClick() {
     }
     espLoader = null;
     loaderTransport = null;
+
+    // After flashing we may be at a higher baud. Switch back to 115200 for the firmware config channel.
+    try {
+      if (serialPort && (serialPort.readable || serialPort.writable)) {
+        await serialPort.close();
+      }
+    } catch {}
+    try {
+      await withTimeout(
+        serialPort.open({ baudRate: 115200 }),
+        6000,
+        new Error("Serial reopen timeout")
+      );
+    } catch (e) {
+      console.warn("Failed to reopen serial at 115200 for config", e);
+    }
 
     await sleep(500);
 
@@ -784,7 +789,6 @@ async function handleFlashClick() {
 
     const isDriverHelpCase = isLikelyDriverOrPortIssueMessage(detailsText);
 
-    // Auto-open only once per tab/session.
     if (isDriverHelpCase && !hasShownDriverHelpThisSession()) {
       markDriverHelpShownThisSession();
       try { showDriverHelpPopup(); } catch {}
@@ -803,7 +807,6 @@ async function handleFlashClick() {
           if (isDriverHelpCase) {
             try { showDriverHelpPopup(); } catch {}
           } else {
-            // Keep legacy behavior for non-detection errors.
             alert(lastErrorMessage || detailsText);
           }
         });
