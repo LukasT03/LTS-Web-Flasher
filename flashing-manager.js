@@ -447,83 +447,136 @@ async function ensureLoader() {
     throw new Error("Flasher library not loaded");
   }
 
-  const transport = new TransportCtor(serialPort);
-  loaderTransport = transport;
-  
-  // UPDATED: Baudrate lowered to 460800 for robustness (was 921600)
-  espLoader = new LoaderCtor({
-    transport,
-    baudrate: 460800, 
-    terminal: {
-      clean() {},
-      write() {},
-      writeLine() {},
-    },
-  });
-  if (!espLoader.flashSize) {
-    espLoader.flashSize = "4MB";
-  }
+  const isWindows = /windows/i.test(String(navigator.userAgent || ""));
 
-  try {
-    const timeoutErr = new Error("No ESP32 detected (sync timeout)");
-    // UPDATED: Timeout increased to 15000ms (15s) to allow manual BOOT press
-    await withTimeout(espLoader.main(), 15000, timeoutErr);
-  } catch (err) {
-    console.error("Failed to initialise loader", err);
-    // Important on Windows: cancel any pending reads and fully release the port.
-    // Otherwise the promise chain can appear to "hang" on subsequent attempts.
+  // ESP32-S3 (native USB / JTAG serial) is usually most reliable at 115200 for initial sync.
+  // Classic ESP32 devkits can often do 460800+.
+  const baudCandidates = (selectedValue === "v4")
+    ? [115200, 460800, 921600]
+    : [460800, 115200, 921600];
+
+  const disconnectTransport = async () => {
     try {
       if (loaderTransport && typeof loaderTransport.disconnect === "function") {
         await loaderTransport.disconnect();
       }
     } catch {}
+    loaderTransport = null;
+  };
+
+  const hardCleanupIfWindows = async () => {
+    // On Windows we sometimes must close the port to release stuck readers.
+    if (!isWindows) return;
     try {
       if (serialPort && (serialPort.readable || serialPort.writable)) {
         await serialPort.close();
       }
     } catch {}
+  };
 
+  let lastErr = null;
+
+  for (const baud of baudCandidates) {
     espLoader = null;
-    loaderTransport = null;
+    await disconnectTransport();
 
-    throw err;
-  }
+    try {
+      // Ensure the port is open (some environments are flaky if it's only implicitly opened).
+      try {
+        if (!serialPort.readable || !serialPort.writable) {
+          await serialPort.open({ baudRate: 115200 });
+          await sleep(120);
+        }
+      } catch {}
 
-  let chipNameUpper = "";
-  try {
-    if (espLoader && espLoader.chip && espLoader.chip.CHIP_NAME) {
-      chipNameUpper = String(espLoader.chip.CHIP_NAME).toUpperCase();
-    } else if (espLoader && (espLoader.chipFamily || espLoader.chipName)) {
-      chipNameUpper = String(
-        espLoader.chipFamily || espLoader.chipName
-      ).toUpperCase();
+      // Try to place the chip into a known state before syncing.
+      // For ESP32-S3 this is often necessary on macOS.
+      try {
+        await hardResetSerial(serialPort);
+        await sleep(160);
+      } catch {}
+
+      const transport = new TransportCtor(serialPort);
+      loaderTransport = transport;
+
+      const loader = new LoaderCtor({
+        transport,
+        baudrate: baud,
+        terminal: {
+          clean() {},
+          write() {},
+          writeLine() {},
+        },
+      });
+
+      if (!loader.flashSize) {
+        loader.flashSize = "4MB";
+      }
+
+      const timeoutErr = new Error("No ESP32 detected (sync timeout)");
+      // Keep this bounded so the UI doesn't feel stuck.
+      await withTimeout(loader.main(), 9000, timeoutErr);
+
+      // Success.
+      espLoader = loader;
+      lastErr = null;
+
+      // Validate chip name and auto-select board.
+      let chipNameUpper = "";
+      try {
+        if (espLoader && espLoader.chip && espLoader.chip.CHIP_NAME) {
+          chipNameUpper = String(espLoader.chip.CHIP_NAME).toUpperCase();
+        } else if (espLoader && (espLoader.chipFamily || espLoader.chipName)) {
+          chipNameUpper = String(espLoader.chipFamily || espLoader.chipName).toUpperCase();
+        }
+      } catch (e) {
+        console.warn("Chip name detection failed", e);
+      }
+
+      if (!chipNameUpper || !chipNameUpper.includes("ESP32")) {
+        throw new Error("No ESP32 detected (invalid chip)");
+      }
+
+      const isPlainEsp32 =
+        chipNameUpper === "ESP32" ||
+        (chipNameUpper.includes("ESP32") &&
+          !chipNameUpper.includes("S2") &&
+          !chipNameUpper.includes("S3") &&
+          !chipNameUpper.includes("C3"));
+
+      console.log("LTS Web Flasher – simple chip check", {
+        selectedValue,
+        chipNameUpper,
+        isPlainEsp32,
+        baud,
+      });
+
+      const autoSelected = isPlainEsp32 ? "dev" : "v4";
+      if (autoSelected !== selectedValue) {
+        applyBoardSelection(autoSelected);
+      }
+
+      return espLoader;
+    } catch (err) {
+      lastErr = err;
+      console.error("ensureLoader attempt failed", { baud, err });
+
+      // Clean up between attempts.
+      await disconnectTransport();
+      await hardCleanupIfWindows();
+
+      // Small pause before retry.
+      await sleep(180);
+      continue;
     }
-  } catch (e) {
-    console.warn("Chip name detection failed", e);
   }
 
-  // Strict validation: if we can't identify an ESP chip, treat this as a wrong port selection.
-  if (!chipNameUpper || !chipNameUpper.includes("ESP32")) {
-    throw new Error("No ESP32 detected (invalid chip)");
-  }
+  // Final failure cleanup.
+  espLoader = null;
+  await disconnectTransport();
+  await hardCleanupIfWindows();
 
-  const isPlainEsp32 =
-    chipNameUpper === "ESP32" ||
-    (chipNameUpper.includes("ESP32") &&
-      !chipNameUpper.includes("S2") &&
-      !chipNameUpper.includes("S3") &&
-      !chipNameUpper.includes("C3"));
-  console.log("LTS Web Flasher – simple chip check", {
-    selectedValue,
-    chipNameUpper,
-    isPlainEsp32,
-  });
-  const autoSelected = isPlainEsp32 ? "dev" : "v4";
-  if (autoSelected !== selectedValue) {
-    applyBoardSelection(autoSelected);
-  }
-
-  return espLoader;
+  throw (lastErr || new Error("No ESP32 detected"));
 }
 
 async function handleConnectClick() {
