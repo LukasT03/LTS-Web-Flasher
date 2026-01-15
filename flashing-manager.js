@@ -470,12 +470,18 @@ async function ensureLoader() {
   }
 
   const cleanupAttempt = async (transportToClose) => {
-    // Important on Windows: cancel any pending reads and fully release the port.
+    // Windows often needs a hard cleanup (disconnect + close) to avoid stuck readers.
+    // On macOS/Linux, repeatedly closing/reopening can make sync *less* reliable.
     try {
       if (transportToClose && typeof transportToClose.disconnect === "function") {
         await transportToClose.disconnect();
       }
     } catch {}
+
+    if (!isWindows) {
+      return;
+    }
+
     try {
       if (serialPort && (serialPort.readable || serialPort.writable)) {
         await serialPort.close();
