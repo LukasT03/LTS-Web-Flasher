@@ -18,12 +18,34 @@ function sleep(ms) {
 }
 
 
+
 function withTimeout(promise, ms, timeoutError) {
   let t;
   const timeoutPromise = new Promise((_, reject) => {
     t = setTimeout(() => reject(timeoutError), ms);
   });
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(t));
+}
+
+const KNOWN_ESP32_RELATED_USB_VIDS = new Set([
+  0x10c4, // Silicon Labs (CP210x)
+  0x1a86, // WCH (CH340/CH341)
+  0x0403, // FTDI
+  0x303a, // Espressif (native USB / USB-JTAG)
+]);
+
+function portLooksLikeEsp32Device(port) {
+  // If WebSerial cannot provide VID/PID (or getInfo is missing), we can't pre-filter.
+  if (!port || typeof port.getInfo !== "function") return true;
+
+  try {
+    const info = port.getInfo() || {};
+    const vid = info.usbVendorId;
+    if (typeof vid !== "number") return true;
+    return KNOWN_ESP32_RELATED_USB_VIDS.has(vid);
+  } catch {
+    return true;
+  }
 }
 
 const DRIVER_HELP_LINKS = {
@@ -105,28 +127,7 @@ function markDriverHelpShownThisSession() {
 function showDriverHelpPopup() {
   const data = buildDriverHelpData();
 
-  // Fallback (until HTML/CSS is wired): show an alert.
-  const fallbackAlert = () => {
-    try {
-      alert(
-        [
-          data.title,
-          "",
-          data.body,
-          "",
-          ...data.portExamples,
-          "",
-          `${data.linksTitle}:`,
-          ...data.links.map((l) => `${l.label}: ${l.href}`),
-          "",
-          data.hint,
-        ].join("\n")
-      );
-    } catch {}
-  };
-
   if (typeof document === "undefined" || !document.body) {
-    fallbackAlert();
     return;
   }
 
@@ -135,7 +136,6 @@ function showDriverHelpPopup() {
   //              driverHelpLinksTitle, driverHelpLinks, driverHelpHint
   const backdrop = document.getElementById("driverHelpModal");
   if (!backdrop) {
-    fallbackAlert();
     return;
   }
 
@@ -568,12 +568,17 @@ async function handleConnectClick() {
     const port = await navigator.serial.requestPort();
     serialPort = port;
 
+    // Windows/Chrome can hang indefinitely when esptool-js tries to sync on a completely wrong COM port.
+    // If VID is available and clearly not ESP-related, abort early and let the existing driver-help popup handle it.
+    if (!portLooksLikeEsp32Device(port)) {
+      // Keep this message in English so it reliably matches DRIVER_HELP_TRIGGERS.
+      throw new Error("No ESP32 detected");
+    }
+
     if (connectBtn) connectBtn.disabled = true;
 
     // Strict check: only succeed if we can sync and identify an ESP32-family chip.
     setProgress(0, isGermanRegion ? "Ermittle Board…" : "Detecting board…");
-    // Extra guard: on some Windows setups, the underlying WebSerial read can stall.
-    // Wrap detection itself in a slightly longer timeout and force cleanup in the catch below.
     await withTimeout(
       ensureLoader(),
       9000,
