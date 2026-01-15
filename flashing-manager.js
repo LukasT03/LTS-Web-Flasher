@@ -485,6 +485,23 @@ async function ensureLoader() {
     await withTimeout(espLoader.main(), 6000, timeoutErr);
   } catch (err) {
     console.error("Failed to initialise loader", err);
+
+    // Important on Windows: cancel any pending reads and fully release the port.
+    // Otherwise the promise chain can appear to "hang" on subsequent attempts.
+    try {
+      if (loaderTransport && typeof loaderTransport.disconnect === "function") {
+        await loaderTransport.disconnect();
+      }
+    } catch {}
+    try {
+      if (serialPort && (serialPort.readable || serialPort.writable)) {
+        await serialPort.close();
+      }
+    } catch {}
+
+    espLoader = null;
+    loaderTransport = null;
+
     throw err;
   }
 
@@ -555,7 +572,13 @@ async function handleConnectClick() {
 
     // Strict check: only succeed if we can sync and identify an ESP32-family chip.
     setProgress(0, isGermanRegion ? "Ermittle Board…" : "Detecting board…");
-    await ensureLoader();
+    // Extra guard: on some Windows setups, the underlying WebSerial read can stall.
+    // Wrap detection itself in a slightly longer timeout and force cleanup in the catch below.
+    await withTimeout(
+      ensureLoader(),
+      9000,
+      new Error("No ESP32 detected (connect timeout)")
+    );
 
     // Clean up loader/transport so the port can be re-opened cleanly during flashing.
     try {
