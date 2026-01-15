@@ -105,7 +105,28 @@ function markDriverHelpShownThisSession() {
 function showDriverHelpPopup() {
   const data = buildDriverHelpData();
 
+  // Fallback (until HTML/CSS is wired): show an alert.
+  const fallbackAlert = () => {
+    try {
+      alert(
+        [
+          data.title,
+          "",
+          data.body,
+          "",
+          ...data.portExamples,
+          "",
+          `${data.linksTitle}:`,
+          ...data.links.map((l) => `${l.label}: ${l.href}`),
+          "",
+          data.hint,
+        ].join("\n")
+      );
+    } catch {}
+  };
+
   if (typeof document === "undefined" || !document.body) {
+    fallbackAlert();
     return;
   }
 
@@ -114,6 +135,7 @@ function showDriverHelpPopup() {
   //              driverHelpLinksTitle, driverHelpLinks, driverHelpHint
   const backdrop = document.getElementById("driverHelpModal");
   if (!backdrop) {
+    fallbackAlert();
     return;
   }
 
@@ -390,7 +412,6 @@ function setProgress(percent, labelText) {
   }
 }
 
-
 async function sendVariantOverSerial() {
   if (!serialPort) return;
 
@@ -427,44 +448,10 @@ async function sendVariantOverSerial() {
   await sleep(200);
 }
 
-// Helper: forcibly close serial port and disconnect loader transport on timeout
-async function forceCloseSerialForTimeout(reason) {
-  console.warn("[LTS Web Flasher] Forcing serial close due to timeout:", reason);
-
-  // Best-effort: disconnect transport first (if any), then close the port.
-  try {
-    if (loaderTransport && typeof loaderTransport.disconnect === "function") {
-      await loaderTransport.disconnect();
-    }
-  } catch {}
-
-  try {
-    if (serialPort && (serialPort.readable || serialPort.writable)) {
-      await serialPort.close();
-    }
-  } catch {}
-}
-
 async function ensureLoader() {
   if (espLoader) return espLoader;
   if (!serialPort) {
     throw new Error("No serial connection open");
-  }
-
-  // Ensure the port is open before esptool tries to sync. On some systems,
-  // internal opens can hang; keep this short and fail fast.
-  try {
-    if (!serialPort.readable || !serialPort.writable) {
-      await withTimeout(
-        serialPort.open({ baudRate: 115200 }),
-        6000,
-        new Error("Serial open timeout")
-      );
-    }
-  } catch (e) {
-    // If opening fails or times out, make sure the port is not left half-open.
-    try { await forceCloseSerialForTimeout("open"); } catch {}
-    throw e;
   }
 
   const TransportCtor = window.ESPLoaderTransport;
@@ -478,9 +465,7 @@ async function ensureLoader() {
   loaderTransport = transport;
   espLoader = new LoaderCtor({
     transport,
-    // Use a conservative baudrate for detection/sync (more reliable on Windows).
-    // Flash speed is still fine for typical firmware sizes.
-    baudrate: 115200,
+    baudrate: 921600,
     terminal: {
       clean() {},
       write() {},
@@ -495,12 +480,28 @@ async function ensureLoader() {
   try {
     const timeoutErr = new Error("No ESP32 detected (sync timeout)");
 
-    // On some Windows setups, sync can be slow or stall. Use a longer timeout,
-    // and if it fails we hard-close the port to break any stuck reads.
-    await withTimeout(espLoader.main(), 9000, timeoutErr);
+    // If the selected port is not an ESP device, sync can hang for a long time on some systems.
+    // Keep this short so the UI never gets stuck on “Detecting board…”.
+    await withTimeout(espLoader.main(), 6000, timeoutErr);
   } catch (err) {
     console.error("Failed to initialise loader", err);
-    try { await forceCloseSerialForTimeout("sync failed"); } catch {}
+
+    // Important on Windows: cancel any pending reads and fully release the port.
+    // Otherwise the promise chain can appear to "hang" on subsequent attempts.
+    try {
+      if (loaderTransport && typeof loaderTransport.disconnect === "function") {
+        await loaderTransport.disconnect();
+      }
+    } catch {}
+    try {
+      if (serialPort && (serialPort.readable || serialPort.writable)) {
+        await serialPort.close();
+      }
+    } catch {}
+
+    espLoader = null;
+    loaderTransport = null;
+
     throw err;
   }
 
@@ -517,6 +518,7 @@ async function ensureLoader() {
     console.warn("Chip name detection failed", e);
   }
 
+  // Strict validation: if we can't identify an ESP chip, treat this as a wrong port selection.
   if (!chipNameUpper || !chipNameUpper.includes("ESP32")) {
     throw new Error("No ESP32 detected (invalid chip)");
   }
@@ -538,6 +540,7 @@ async function ensureLoader() {
   if (autoSelected !== selectedValue) {
     applyBoardSelection(autoSelected);
   }
+
   return espLoader;
 }
 
@@ -569,9 +572,11 @@ async function handleConnectClick() {
 
     // Strict check: only succeed if we can sync and identify an ESP32-family chip.
     setProgress(0, isGermanRegion ? "Ermittle Board…" : "Detecting board…");
+    // Extra guard: on some Windows setups, the underlying WebSerial read can stall.
+    // Wrap detection itself in a slightly longer timeout and force cleanup in the catch below.
     await withTimeout(
       ensureLoader(),
-      12000,
+      9000,
       new Error("No ESP32 detected (connect timeout)")
     );
 
@@ -623,6 +628,7 @@ async function handleConnectClick() {
 
     const isDriverHelpCase = isLikelyDriverOrPortIssueMessage(detailsText);
 
+    // Auto-open only once per tab/session.
     if (isDriverHelpCase && !hasShownDriverHelpThisSession()) {
       markDriverHelpShownThisSession();
       try { showDriverHelpPopup(); } catch {}
@@ -641,11 +647,14 @@ async function handleConnectClick() {
           if (isDriverHelpCase) {
             try { showDriverHelpPopup(); } catch {}
           } else {
+            // Keep legacy behavior for non-detection errors.
             alert(lastErrorMessage || detailsText);
           }
         });
       }
     }
+
+    // Force the user to pick a port again.
     serialPort = null;
 
     if (connectBtn) connectBtn.disabled = false;
@@ -683,15 +692,6 @@ async function handleFlashClick() {
 
   try {
     const loader = await ensureLoader();
-    // Speed up flashing: keep detection/sync conservative, then switch to a higher baud for data transfer.
-    try {
-      if (loader && typeof loader.changeBaud === "function") {
-        loader.baudrate = 921600;
-        await loader.changeBaud();
-      }
-    } catch (e) {
-      console.warn("Failed to increase baudrate for flashing, continuing at default", e);
-    }
     const url = BIN_URLS[selectedValue] || BIN_URLS.dev;
 
     const res = await fetch(url, { cache: "no-store" });
@@ -728,22 +728,6 @@ async function handleFlashClick() {
     }
     espLoader = null;
     loaderTransport = null;
-
-    // After flashing we may be at a higher baud. Switch back to 115200 for the firmware config channel.
-    try {
-      if (serialPort && (serialPort.readable || serialPort.writable)) {
-        await serialPort.close();
-      }
-    } catch {}
-    try {
-      await withTimeout(
-        serialPort.open({ baudRate: 115200 }),
-        6000,
-        new Error("Serial reopen timeout")
-      );
-    } catch (e) {
-      console.warn("Failed to reopen serial at 115200 for config", e);
-    }
 
     await sleep(500);
 
@@ -789,6 +773,7 @@ async function handleFlashClick() {
 
     const isDriverHelpCase = isLikelyDriverOrPortIssueMessage(detailsText);
 
+    // Auto-open only once per tab/session.
     if (isDriverHelpCase && !hasShownDriverHelpThisSession()) {
       markDriverHelpShownThisSession();
       try { showDriverHelpPopup(); } catch {}
@@ -807,6 +792,7 @@ async function handleFlashClick() {
           if (isDriverHelpCase) {
             try { showDriverHelpPopup(); } catch {}
           } else {
+            // Keep legacy behavior for non-detection errors.
             alert(lastErrorMessage || detailsText);
           }
         });
