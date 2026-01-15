@@ -304,6 +304,15 @@ if (isGermanRegion) {
 const supportsWebSerial =
   typeof navigator !== "undefined" && "serial" in navigator;
 
+const isWindows =
+  typeof navigator !== "undefined" && /windows/i.test(String(navigator.userAgent || ""));
+
+// Windows + some USB-UART bridges (especially CH340) are much less reliable at very high baud rates.
+// Prefer lower baud on Windows and fall back automatically if sync fails.
+const BAUD_PREFERENCES = isWindows
+  ? [460800, 115200]
+  : [921600, 460800, 115200];
+
 const connectBtn = document.getElementById("connectBtn");
 const flashBtn = document.getElementById("flashBtn");
 const unsupportedEl = document.getElementById("wbUnsupported");
@@ -447,7 +456,6 @@ async function sendVariantOverSerial() {
 
   await sleep(200);
 }
-
 async function ensureLoader() {
   if (espLoader) return espLoader;
   if (!serialPort) {
@@ -461,36 +469,11 @@ async function ensureLoader() {
     throw new Error("Flasher library not loaded");
   }
 
-  const transport = new TransportCtor(serialPort);
-  loaderTransport = transport;
-  espLoader = new LoaderCtor({
-    transport,
-    baudrate: 921600,
-    terminal: {
-      clean() {},
-      write() {},
-      writeLine() {},
-    },
-  });
-
-  if (!espLoader.flashSize) {
-    espLoader.flashSize = "4MB";
-  }
-
-  try {
-    const timeoutErr = new Error("No ESP32 detected (sync timeout)");
-
-    // If the selected port is not an ESP device, sync can hang for a long time on some systems.
-    // Keep this short so the UI never gets stuck on “Detecting board…”.
-    await withTimeout(espLoader.main(), 6000, timeoutErr);
-  } catch (err) {
-    console.error("Failed to initialise loader", err);
-
+  const cleanupAttempt = async (transportToClose) => {
     // Important on Windows: cancel any pending reads and fully release the port.
-    // Otherwise the promise chain can appear to "hang" on subsequent attempts.
     try {
-      if (loaderTransport && typeof loaderTransport.disconnect === "function") {
-        await loaderTransport.disconnect();
+      if (transportToClose && typeof transportToClose.disconnect === "function") {
+        await transportToClose.disconnect();
       }
     } catch {}
     try {
@@ -498,11 +481,78 @@ async function ensureLoader() {
         await serialPort.close();
       }
     } catch {}
+  };
 
+  // Make sure the port is open before we try to sync.
+  // (Some environments behave better if the page opens it explicitly.)
+  const ensurePortOpen = async () => {
+    try {
+      if (!serialPort.readable || !serialPort.writable) {
+        await serialPort.open({ baudRate: 115200 });
+        await sleep(80);
+      }
+    } catch {}
+  };
+
+  await ensurePortOpen();
+
+  let lastErr = null;
+  let chosenBaud = BAUD_PREFERENCES[0] || 115200;
+
+  for (const baud of BAUD_PREFERENCES) {
+    // Reset any previous state for this attempt.
     espLoader = null;
     loaderTransport = null;
 
-    throw err;
+    try {
+      await ensurePortOpen();
+
+      const transport = new TransportCtor(serialPort);
+      loaderTransport = transport;
+
+      const loader = new LoaderCtor({
+        transport,
+        baudrate: baud,
+        terminal: {
+          clean() {},
+          write() {},
+          writeLine() {},
+        },
+      });
+
+      if (!loader.flashSize) {
+        loader.flashSize = "4MB";
+      }
+
+      const timeoutErr = new Error("No ESP32 detected (sync timeout)");
+
+      // Keep this short so the UI never gets stuck on “Detecting board…”.
+      await withTimeout(loader.main(), 6000, timeoutErr);
+
+      // Success.
+      espLoader = loader;
+      chosenBaud = baud;
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+
+      // Cleanup hard between attempts so Windows/Chrome doesn't keep a stuck reader alive.
+      await cleanupAttempt(loaderTransport);
+
+      // Wait a moment before retrying.
+      await sleep(120);
+
+      // Continue with next baud.
+      continue;
+    }
+  }
+
+  if (!espLoader) {
+    // Ensure global state is clean.
+    loaderTransport = null;
+    espLoader = null;
+    throw (lastErr || new Error("No ESP32 detected"));
   }
 
   let chipNameUpper = "";
@@ -520,6 +570,10 @@ async function ensureLoader() {
 
   // Strict validation: if we can't identify an ESP chip, treat this as a wrong port selection.
   if (!chipNameUpper || !chipNameUpper.includes("ESP32")) {
+    // Cleanup so the user can immediately try again.
+    await cleanupAttempt(loaderTransport);
+    loaderTransport = null;
+    espLoader = null;
     throw new Error("No ESP32 detected (invalid chip)");
   }
 
@@ -534,6 +588,8 @@ async function ensureLoader() {
     selectedValue,
     chipNameUpper,
     isPlainEsp32,
+    chosenBaud,
+    isWindows,
   });
 
   const autoSelected = isPlainEsp32 ? "dev" : "v4";
