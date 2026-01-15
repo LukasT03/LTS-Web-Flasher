@@ -105,28 +105,7 @@ function markDriverHelpShownThisSession() {
 function showDriverHelpPopup() {
   const data = buildDriverHelpData();
 
-  // Fallback (until HTML/CSS is wired): show an alert.
-  const fallbackAlert = () => {
-    try {
-      alert(
-        [
-          data.title,
-          "",
-          data.body,
-          "",
-          ...data.portExamples,
-          "",
-          `${data.linksTitle}:`,
-          ...data.links.map((l) => `${l.label}: ${l.href}`),
-          "",
-          data.hint,
-        ].join("\n")
-      );
-    } catch {}
-  };
-
   if (typeof document === "undefined" || !document.body) {
-    fallbackAlert();
     return;
   }
 
@@ -135,7 +114,6 @@ function showDriverHelpPopup() {
   //              driverHelpLinksTitle, driverHelpLinks, driverHelpHint
   const backdrop = document.getElementById("driverHelpModal");
   if (!backdrop) {
-    fallbackAlert();
     return;
   }
 
@@ -412,6 +390,7 @@ function setProgress(percent, labelText) {
   }
 }
 
+
 async function sendVariantOverSerial() {
   if (!serialPort) return;
 
@@ -448,10 +427,44 @@ async function sendVariantOverSerial() {
   await sleep(200);
 }
 
+// Helper: forcibly close serial port and disconnect loader transport on timeout
+async function forceCloseSerialForTimeout(reason) {
+  console.warn("[LTS Web Flasher] Forcing serial close due to timeout:", reason);
+
+  // Best-effort: disconnect transport first (if any), then close the port.
+  try {
+    if (loaderTransport && typeof loaderTransport.disconnect === "function") {
+      await loaderTransport.disconnect();
+    }
+  } catch {}
+
+  try {
+    if (serialPort && (serialPort.readable || serialPort.writable)) {
+      await serialPort.close();
+    }
+  } catch {}
+}
+
 async function ensureLoader() {
   if (espLoader) return espLoader;
   if (!serialPort) {
     throw new Error("No serial connection open");
+  }
+
+  // Ensure the port is open before esptool tries to sync. On some systems,
+  // internal opens can hang; keep this short and fail fast.
+  try {
+    if (!serialPort.readable || !serialPort.writable) {
+      await withTimeout(
+        serialPort.open({ baudRate: 115200 }),
+        2500,
+        new Error("Serial open timeout")
+      );
+    }
+  } catch (e) {
+    // If opening fails or times out, make sure the port is not left half-open.
+    try { await forceCloseSerialForTimeout("open"); } catch {}
+    throw e;
   }
 
   const TransportCtor = window.ESPLoaderTransport;
@@ -482,26 +495,30 @@ async function ensureLoader() {
 
     // If the selected port is not an ESP device, sync can hang for a long time on some systems.
     // Keep this short so the UI never gets stuck on “Detecting board…”.
-    await withTimeout(espLoader.main(), 6000, timeoutErr);
+    //
+    // IMPORTANT: Sometimes the promise doesn't settle even if we race a timeout.
+    // In those cases, we additionally force-close the serial port to break any
+    // stuck read/write waits inside the underlying transport.
+    let watchdogFired = false;
+    const watchdog = setTimeout(() => {
+      watchdogFired = true;
+      // Fire-and-forget; we only need to break the hang.
+      forceCloseSerialForTimeout("sync watchdog");
+    }, 6500);
+
+    try {
+      await withTimeout(espLoader.main(), 6000, timeoutErr);
+    } finally {
+      clearTimeout(watchdog);
+    }
+
+    // If the watchdog fired, treat it as a timeout regardless of whether main() eventually settles.
+    if (watchdogFired) {
+      throw timeoutErr;
+    }
   } catch (err) {
     console.error("Failed to initialise loader", err);
-
-    // Important on Windows: cancel any pending reads and fully release the port.
-    // Otherwise the promise chain can appear to "hang" on subsequent attempts.
-    try {
-      if (loaderTransport && typeof loaderTransport.disconnect === "function") {
-        await loaderTransport.disconnect();
-      }
-    } catch {}
-    try {
-      if (serialPort && (serialPort.readable || serialPort.writable)) {
-        await serialPort.close();
-      }
-    } catch {}
-
-    espLoader = null;
-    loaderTransport = null;
-
+    try { await forceCloseSerialForTimeout("sync failed"); } catch {}
     throw err;
   }
 
@@ -572,13 +589,7 @@ async function handleConnectClick() {
 
     // Strict check: only succeed if we can sync and identify an ESP32-family chip.
     setProgress(0, isGermanRegion ? "Ermittle Board…" : "Detecting board…");
-    // Extra guard: on some Windows setups, the underlying WebSerial read can stall.
-    // Wrap detection itself in a slightly longer timeout and force cleanup in the catch below.
-    await withTimeout(
-      ensureLoader(),
-      9000,
-      new Error("No ESP32 detected (connect timeout)")
-    );
+    await ensureLoader();
 
     // Clean up loader/transport so the port can be re-opened cleanly during flashing.
     try {
