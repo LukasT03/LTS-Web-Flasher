@@ -4,11 +4,11 @@ window.ESPLoader = esptoolBundle.ESPLoader;
 window.ESPLoaderTransport = esptoolBundle.Transport;
 window.ESPHardReset = esptoolBundle.hardReset || null;
 
-
 const primaryLang =
   (Array.isArray(navigator.languages) && navigator.languages.length
     ? navigator.languages[0]
-    : (navigator.language || navigator.userLanguage || "")) || "";
+    : (navigator.language || navigator.userLanguage || "")) ||
+  "";
 
 // English is the default. Only switch to German if the *primary* preferred language is German.
 const isGermanRegion = /^de(-|$)/i.test(String(primaryLang).toLowerCase());
@@ -16,8 +16,6 @@ const isGermanRegion = /^de(-|$)/i.test(String(primaryLang).toLowerCase());
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-
 
 function withTimeout(promise, ms, timeoutError) {
   let t;
@@ -79,13 +77,11 @@ function buildDriverHelpData() {
   const body = isGermanRegion
     ? "Am ausgewählten Port ist kein ESP32-basiertes Board angeschlossen. Es ist möglich, dass der richtige Port wegen fehlender Treiber nicht angezeigt wird. Der korrekte Port würde ungefähr so heißen:"
     : "No ESP32-based board is connected to the selected port. It’s possible the correct port isn’t showing up because the required drivers are missing. The correct port would be named something like:";
-
   const portExamples = [
     "CP2102 USB to UART Bridge Controller",
     "USB-SERIAL CH340 (COM3)",
     "USB JTAG/serial debug unit",
   ];
-
   const linksTitle = isGermanRegion ? "Treiber-Downloads:" : "Driver downloads:";
   const links = [
     { label: isGermanRegion ? "CP210x (häufig)" : "CP210x (common)", href: DRIVER_HELP_LINKS.cp210x },
@@ -93,9 +89,10 @@ function buildDriverHelpData() {
     { label: isGermanRegion ? "FTDI (selten)" : "FTDI (rare)", href: DRIVER_HELP_LINKS.ftdi },
   ];
 
+  // UPDATED HINT: Added instructions for the BOOT button
   const hint = isGermanRegion
-    ? "Tipp: Nutze ein USB-Datenkabel und schließe es direkt am Computer an (ohne Hub/Adapter)."
-    : "Tip: Use a USB data cable and connect it directly to your computer (no hub/adapter).";
+    ? "Tipp: Nutze ein USB-Datenkabel. Falls es trotzdem nicht geht: Halte den BOOT-Button auf dem Board gedrückt, während du 'Verbinden' klickst, und lasse ihn erst los, wenn das Board erkannt wurde."
+    : "Tip: Use a USB data cable. If it still fails: Hold the BOOT button on the board while clicking 'Connect' and only release it once the board is detected.";
 
   return {
     title,
@@ -126,7 +123,6 @@ function markDriverHelpShownThisSession() {
 
 function showDriverHelpPopup() {
   const data = buildDriverHelpData();
-
   if (typeof document === "undefined" || !document.body) {
     return;
   }
@@ -150,7 +146,6 @@ function showDriverHelpPopup() {
 
     const closeX = backdrop.querySelector(".modal-close");
     if (closeX) closeX.addEventListener("click", hide);
-
     backdrop.addEventListener("click", (e) => {
       if (e.target === backdrop) hide();
     });
@@ -197,7 +192,6 @@ function showDriverHelpPopup() {
 
 async function hardResetSerial(port) {
   if (!port || !port.setSignals) return;
-
   const tryOpen = async () => {
     try {
       if (!port.readable || !port.writable) {
@@ -206,7 +200,6 @@ async function hardResetSerial(port) {
       }
     } catch {}
   };
-
   // Two reset strategies because classic ESP32 DevKits (USB-UART) and native-USB
   // ESP32-S3 boards often behave differently with WebSerial signal polarity.
   //
@@ -222,7 +215,6 @@ async function hardResetSerial(port) {
     await port.setSignals({ dataTerminalReady: false, requestToSend: false });
     await sleep(180);
   };
-
   // Strategy B (often works well on native-USB ESP32-S3 designs with auto-reset wiring)
   // Toggle both DTR and RTS in a common sequence.
   const pulseDtrRts = async () => {
@@ -233,7 +225,6 @@ async function hardResetSerial(port) {
     await port.setSignals({ dataTerminalReady: false, requestToSend: false });
     await sleep(120);
   };
-
   await tryOpen();
 
   const doPulse = async () => {
@@ -285,13 +276,11 @@ function applyGermanTexts() {
   if (step2El) step2El.textContent = "Drücke den Button zum Verbinden und wähle den korrekten COM-Port aus";
   if (step3El) step3El.textContent = "Wähle deine Respooler-Variante im Menü aus";
   if (step4El) step4El.textContent = "Installiere die Firmware über den Button";
-
   const fwLabelEl = document.getElementById("fwLabel");
   if (fwLabelEl) fwLabelEl.textContent = "Aktuelle Firmware:";
 
   const flashBtnEl = document.getElementById("flashBtn");
   if (flashBtnEl) flashBtnEl.textContent = "Installieren";
-
   const connectBtnEl = document.getElementById("connectBtn");
   if (connectBtnEl) connectBtnEl.textContent = "Board verbinden";
 
@@ -311,10 +300,10 @@ const progressWrapper = document.getElementById("progressWrapper");
 const progressBar = document.getElementById("progressBar");
 const progressLabel = document.getElementById("progressLabel");
 const progressPercent = document.getElementById("progressPercent");
-
 if (progressLabel) {
   progressLabel.textContent = !supportsWebSerial
-    ? (isGermanRegion ? "Nicht unterstützt" : "Not supported")
+    ?
+    (isGermanRegion ? "Nicht unterstützt" : "Not supported")
     : (isGermanRegion ? "Bereit für Verbindung" : "Ready for connection");
 }
 if (progressPercent) {
@@ -332,10 +321,10 @@ if (flashBtn) {
   flashBtn.disabled = true;
 }
 if (unsupportedEl) unsupportedEl.classList.add("hidden");
-
 if (progressLabel) {
   progressLabel.textContent = !supportsWebSerial
-    ? (isGermanRegion ? "Nicht unterstützt" : "Not supported")
+    ?
+    (isGermanRegion ? "Nicht unterstützt" : "Not supported")
     : (isGermanRegion ? "Bereit für Verbindung" : "Ready for connection");
 }
 
@@ -343,7 +332,6 @@ const BIN_URLS = {
   dev: "https://respooler.lts-design.com/Firmware/ESP32-WROOM-32_latest.bin",
   v4:  "https://respooler.lts-design.com/Firmware/ControlBoard_V4_latest.bin"
 };
-
 const CHIP_FAMILY = {
   dev: "ESP32",
   v4:  "ESP32-S3"
@@ -366,7 +354,8 @@ function updateVariantIndicator() {
 function applyBoardSelection(val) {
   if (val !== "dev" && val !== "v4") return;
   selectedValue = val;
-  try { localStorage.setItem("lts_respooler_board", selectedValue); } catch {}
+  try { localStorage.setItem("lts_respooler_board", selectedValue);
+  } catch {}
 }
 
 try {
@@ -392,17 +381,14 @@ varButtons.forEach(btn => {
     }
   });
 });
-
 let serialPort = null;
 let espLoader = null;
 let loaderTransport = null;
 let lastErrorMessage = "";
-
 function setProgress(percent, labelText) {
   if (!progressWrapper || !progressBar || !progressLabel) return;
   const clamped = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
   progressBar.style.width = clamped + "%";
-
   if (progressPercent) {
     progressPercent.textContent = clamped + " %";
   }
@@ -416,7 +402,8 @@ async function sendVariantOverSerial() {
   if (!serialPort) return;
 
   const payload = selectedVariant === "pro"
-    ? '{"SET":{"VAR":"PRO"}}\n'
+    ?
+    '{"SET":{"VAR":"PRO"}}\n'
     : '{"SET":{"VAR":"STD"}}\n';
 
   const start = performance.now();
@@ -456,36 +443,33 @@ async function ensureLoader() {
 
   const TransportCtor = window.ESPLoaderTransport;
   const LoaderCtor = window.ESPLoader;
-
   if (!TransportCtor || !LoaderCtor) {
     throw new Error("Flasher library not loaded");
   }
 
   const transport = new TransportCtor(serialPort);
   loaderTransport = transport;
+  
+  // UPDATED: Baudrate lowered to 460800 for robustness (was 921600)
   espLoader = new LoaderCtor({
     transport,
-    baudrate: 921600,
+    baudrate: 460800, 
     terminal: {
       clean() {},
       write() {},
       writeLine() {},
     },
   });
-
   if (!espLoader.flashSize) {
     espLoader.flashSize = "4MB";
   }
 
   try {
     const timeoutErr = new Error("No ESP32 detected (sync timeout)");
-
-    // If the selected port is not an ESP device, sync can hang for a long time on some systems.
-    // Keep this short so the UI never gets stuck on “Detecting board…”.
-    await withTimeout(espLoader.main(), 6000, timeoutErr);
+    // UPDATED: Timeout increased to 15000ms (15s) to allow manual BOOT press
+    await withTimeout(espLoader.main(), 15000, timeoutErr);
   } catch (err) {
     console.error("Failed to initialise loader", err);
-
     // Important on Windows: cancel any pending reads and fully release the port.
     // Otherwise the promise chain can appear to "hang" on subsequent attempts.
     try {
@@ -529,13 +513,11 @@ async function ensureLoader() {
       !chipNameUpper.includes("S2") &&
       !chipNameUpper.includes("S3") &&
       !chipNameUpper.includes("C3"));
-
   console.log("LTS Web Flasher – simple chip check", {
     selectedValue,
     chipNameUpper,
     isPlainEsp32,
   });
-
   const autoSelected = isPlainEsp32 ? "dev" : "v4";
   if (autoSelected !== selectedValue) {
     applyBoardSelection(autoSelected);
@@ -547,9 +529,11 @@ async function ensureLoader() {
 async function handleConnectClick() {
   if (!supportsWebSerial || !navigator.serial || typeof navigator.serial.requestPort !== "function") {
     const msg = isGermanRegion
-      ? "WebSerial wird nicht unterstützt."
+      ?
+      "WebSerial wird nicht unterstützt."
       : "WebSerial is not supported.";
-    try { alert(msg); } catch {}
+    try { alert(msg);
+    } catch {}
     setProgress(0, isGermanRegion ? "Nicht unterstützt" : "Not supported");
     return;
   }
@@ -576,14 +560,11 @@ async function handleConnectClick() {
     }
 
     if (connectBtn) connectBtn.disabled = true;
-
     // Strict check: only succeed if we can sync and identify an ESP32-family chip.
     setProgress(0, isGermanRegion ? "Ermittle Board…" : "Detecting board…");
-    await withTimeout(
-      ensureLoader(),
-      9000,
-      new Error("No ESP32 detected (connect timeout)")
-    );
+    
+    // UPDATED: Main timeout logic is now handled inside ensureLoader (15s)
+    await ensureLoader();
 
     // Clean up loader/transport so the port can be re-opened cleanly during flashing.
     try {
@@ -593,7 +574,6 @@ async function handleConnectClick() {
     } catch {}
     loaderTransport = null;
     espLoader = null;
-
     // Close the port after detection. The authorized port handle remains available for flashing.
     try {
       if (serialPort && (serialPort.readable || serialPort.writable)) {
@@ -602,7 +582,6 @@ async function handleConnectClick() {
     } catch {}
 
     if (flashBtn) flashBtn.disabled = false;
-
     const detectedBoardLabel = (selectedValue === "v4") ? "Control Board" : "ESP32 DevKit";
     setProgress(0,
       isGermanRegion
@@ -620,7 +599,6 @@ async function handleConnectClick() {
     } catch {}
     loaderTransport = null;
     espLoader = null;
-
     try {
       if (serialPort && (serialPort.readable || serialPort.writable)) {
         await serialPort.close();
@@ -632,15 +610,14 @@ async function handleConnectClick() {
     lastErrorMessage = detailsText;
 
     const isDriverHelpCase = isLikelyDriverOrPortIssueMessage(detailsText);
-
     // Auto-open only once per tab/session.
     if (isDriverHelpCase && !hasShownDriverHelpThisSession()) {
       markDriverHelpShownThisSession();
-      try { showDriverHelpPopup(); } catch {}
+      try { showDriverHelpPopup();
+      } catch {}
     }
 
     setProgress(0, genericText);
-
     if (progressLabel) {
       const linkLabel = isGermanRegion ? "Mehr" : "More";
       progressLabel.innerHTML = genericText + ' <a href="#" id="connectErrorMoreLink">' + linkLabel + '</a>';
@@ -654,6 +631,7 @@ async function handleConnectClick() {
           } else {
             // Keep legacy behavior for non-detection errors.
             alert(lastErrorMessage || detailsText);
+    
           }
         });
       }
@@ -661,7 +639,6 @@ async function handleConnectClick() {
 
     // Force the user to pick a port again.
     serialPort = null;
-
     if (connectBtn) connectBtn.disabled = false;
     if (flashBtn) flashBtn.disabled = true;
   }
@@ -698,7 +675,6 @@ async function handleFlashClick() {
   try {
     const loader = await ensureLoader();
     const url = BIN_URLS[selectedValue] || BIN_URLS.dev;
-
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
       throw new Error("Failed to download firmware: " + res.status);
@@ -707,7 +683,6 @@ async function handleFlashClick() {
     const buf = await res.arrayBuffer();
     const u8 = new Uint8Array(buf);
     const dataStr = loader.ui8ToBstr(u8);
-
     await loader.writeFlash({
       fileArray: [{ address: 0x0, data: dataStr }],
       flashMode: "keep",
@@ -718,12 +693,12 @@ async function handleFlashClick() {
       reportProgress(fileIndex, written, total) {
         const pct = total > 0 ? Math.round((written / total) * 100) : 0;
         const msg = isGermanRegion
-          ? "Firmware wird installiert..."
+          ? 
+          "Firmware wird installiert..."
           : "Flashing firmware...";
         setProgress(pct, msg);
       }
     });
-
     try {
       if (loaderTransport && typeof loaderTransport.disconnect === "function") {
         await loaderTransport.disconnect();
@@ -735,7 +710,6 @@ async function handleFlashClick() {
     loaderTransport = null;
 
     await sleep(500);
-
     setProgress(100, isGermanRegion ? "Konfiguration wird übertragen…" : "Applying configuration…");
 
     await hardResetSerial(serialPort);
@@ -743,7 +717,6 @@ async function handleFlashClick() {
     await sendVariantOverSerial();
     await sleep(150);
     await hardResetSerial(serialPort);
-
     setProgress(100, isGermanRegion ? "Erfolgreich installiert!" : "Flashed successfully!");
     if (progressBar) {
       progressBar.style.background = "rgb(52,199,89)";
@@ -760,32 +733,35 @@ async function handleFlashClick() {
       if (progressLabel) {
         progressLabel.textContent = (isGermanRegion ? "Bereit für Verbindung" : "Ready for connection");
       }
+   
     }, 5000);
   } catch (err) {
     console.error(err);
-    const detailsText = err && err.message ? err.message : String(err);
+    const detailsText = err && err.message ?
+    err.message : String(err);
 
     let genericText;
     if (detailsText.includes(isGermanRegion ? "Download fehlgeschlagen" : "Failed to download firmware")) {
       genericText = isGermanRegion
-        ? "Download fehlgeschlagen!"
+        ?
+        "Download fehlgeschlagen!"
         : "Failed to download firmware!";
     } else {
-      genericText = isGermanRegion ? "Fehler beim Flashen!" : "Flash failed!";
+      genericText = isGermanRegion ?
+      "Fehler beim Flashen!" : "Flash failed!";
     }
 
     lastErrorMessage = detailsText;
 
     const isDriverHelpCase = isLikelyDriverOrPortIssueMessage(detailsText);
-
     // Auto-open only once per tab/session.
     if (isDriverHelpCase && !hasShownDriverHelpThisSession()) {
       markDriverHelpShownThisSession();
-      try { showDriverHelpPopup(); } catch {}
+      try { showDriverHelpPopup();
+      } catch {}
     }
 
     setProgress(0, genericText);
-
     if (progressLabel) {
       const linkLabel = isGermanRegion ? "Mehr" : "More";
       progressLabel.innerHTML = genericText + ' <a href="#" id="flashErrorMoreLink">' + linkLabel + '</a>';
@@ -799,6 +775,7 @@ async function handleFlashClick() {
           } else {
             // Keep legacy behavior for non-detection errors.
             alert(lastErrorMessage || detailsText);
+    
           }
         });
       }
@@ -816,7 +793,6 @@ async function handleFlashClick() {
     serialPort = null;
     espLoader = null;
     loaderTransport = null;
-
     if (connectBtn) {
       connectBtn.textContent = isGermanRegion ? "Board verbinden" : "Connect Board";
       connectBtn.disabled = false;
