@@ -558,7 +558,7 @@ ol li::before {
 }
 
 .modal {
-  width: min(520px, 100%);
+  width: min(460px, 100%);
   background: #ffffff;
   border-radius: 29px;
   padding: 1rem 1rem 0.45rem 1rem;
