@@ -566,20 +566,9 @@ async function handleConnectClick() {
     // UPDATED: Main timeout logic is now handled inside ensureLoader (15s)
     await ensureLoader();
 
-    // Clean up loader/transport so the port can be re-opened cleanly during flashing.
-    try {
-      if (loaderTransport && typeof loaderTransport.disconnect === "function") {
-        await loaderTransport.disconnect();
-      }
-    } catch {}
-    loaderTransport = null;
-    espLoader = null;
-    // Close the port after detection. The authorized port handle remains available for flashing.
-    try {
-      if (serialPort && (serialPort.readable || serialPort.writable)) {
-        await serialPort.close();
-      }
-    } catch {}
+    // Keep the transport + port OPEN here.
+    // Closing the port between “Connect” and “Install” can toggle DTR/RTS and reset the board,
+    // causing the subsequent flash sync to fail (especially on ESP32-S3 / some host setups).
 
     if (flashBtn) flashBtn.disabled = false;
     const detectedBoardLabel = (selectedValue === "v4") ? "Control Board" : "ESP32 DevKit";
