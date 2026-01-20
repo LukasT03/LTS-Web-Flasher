@@ -560,8 +560,15 @@ async function handleConnectClick() {
     }
 
     if (connectBtn) connectBtn.disabled = true;
+    // Strict check: only succeed if we can sync and identify an ESP32-family chip.
     setProgress(0, isGermanRegion ? "Ermittle Board…" : "Detecting board…");
-        await ensureLoader();
+    
+    // UPDATED: Main timeout logic is now handled inside ensureLoader (15s)
+    await ensureLoader();
+
+    // Keep the transport + port OPEN here.
+    // Closing the port between “Connect” and “Install” can toggle DTR/RTS and reset the board,
+    // causing the subsequent flash sync to fail (especially on ESP32-S3 / some host setups).
 
     if (flashBtn) flashBtn.disabled = false;
     const detectedBoardLabel = (selectedValue === "v4") ? "Control Board" : "ESP32 DevKit";
