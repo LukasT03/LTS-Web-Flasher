@@ -3,7 +3,6 @@ import * as esptoolBundle from "https://unpkg.com/esptool-js@0.5.6/bundle.js";
 window.ESPLoader = esptoolBundle.ESPLoader;
 window.ESPLoaderTransport = esptoolBundle.Transport;
 window.ESPHardReset = esptoolBundle.hardReset || null;
-
 const primaryLang =
   (Array.isArray(navigator.languages) && navigator.languages.length
     ? navigator.languages[0]
@@ -31,7 +30,6 @@ const KNOWN_ESP32_RELATED_USB_VIDS = new Set([
   0x0403, // FTDI
   0x303a, // Espressif (native USB / USB-JTAG)
 ]);
-
 function portLooksLikeEsp32Device(port) {
   // If WebSerial cannot provide VID/PID (or getInfo is missing), we can't pre-filter.
   if (!port || typeof port.getInfo !== "function") return true;
@@ -51,7 +49,6 @@ const DRIVER_HELP_LINKS = {
   ch340: "https://www.wch-ic.com/downloads/ch341ser_exe.html",
   ftdi: "https://ftdichip.com/drivers/vcp-drivers/",
 };
-
 const DRIVER_HELP_TRIGGERS = [
   /\bno\s*esp32\b/i,
   /\bkein\s*esp32\b/i,
@@ -66,7 +63,6 @@ const DRIVER_HELP_TRIGGERS = [
   /notallowederror/i,
   /networkerror/i,
 ];
-
 function isLikelyDriverOrPortIssueMessage(msg) {
   const text = String(msg || "");
   return DRIVER_HELP_TRIGGERS.some((re) => re.test(text));
@@ -84,16 +80,18 @@ function buildDriverHelpData() {
   ];
   const linksTitle = isGermanRegion ? "Treiber-Downloads:" : "Driver downloads:";
   const links = [
-    { label: isGermanRegion ? "CP210x (häufig)" : "CP210x (common)", href: DRIVER_HELP_LINKS.cp210x },
-    { label: isGermanRegion ? "CH340/CH341" : "CH340/CH341", href: DRIVER_HELP_LINKS.ch340 },
-    { label: isGermanRegion ? "FTDI (selten)" : "FTDI (rare)", href: DRIVER_HELP_LINKS.ftdi },
+    { label: isGermanRegion ?
+      "CP210x (häufig)" : "CP210x (common)", href: DRIVER_HELP_LINKS.cp210x },
+    { label: isGermanRegion ?
+      "CH340/CH341" : "CH340/CH341", href: DRIVER_HELP_LINKS.ch340 },
+    { label: isGermanRegion ?
+      "FTDI (selten)" : "FTDI (rare)", href: DRIVER_HELP_LINKS.ftdi },
   ];
-
   // UPDATED HINT: Added instructions for the BOOT button
   const hint = isGermanRegion
-    ? "Tipp: Nutze ein USB-Datenkabel. Falls es trotzdem nicht geht: Halte den BOOT-Button auf dem Board gedrückt, während du 'Verbinden' klickst, und lasse ihn erst los, wenn das Board erkannt wurde."
+    ?
+    "Tipp: Nutze ein USB-Datenkabel. Falls es trotzdem nicht geht: Halte den BOOT-Button auf dem Board gedrückt, während du 'Verbinden' klickst, und lasse ihn erst los, wenn das Board erkannt wurde."
     : "Tip: Use a USB data cable. If it still fails: Hold the BOOT button on the board while clicking 'Connect' and only release it once the board is detected.";
-
   return {
     title,
     body,
@@ -450,14 +448,14 @@ async function ensureLoader() {
   const transport = new TransportCtor(serialPort);
   loaderTransport = transport;
 
-  // Use a fixed, conservative baud rate for classic ESP32 DevKit to avoid packet corruption.
-  const baudCandidates = (selectedValue === "dev")
-    ? [115200]
-    : [460800, 230400, 115200];
+  // FIX: Separate Baudrates
+  // "v4" (S3 / Native USB) -> 921600 (High Speed)
+  // "dev" (Classic ESP32) -> 115200 (Robust/Low Speed)
+  const robustBaud = (selectedValue === "v4") ? 921600 : 115200;
 
   espLoader = new LoaderCtor({
     transport,
-    baudrate: baudCandidates[0],
+    baudrate: robustBaud, 
     terminal: {
       clean() {},
       write() {},
@@ -569,11 +567,9 @@ async function handleConnectClick() {
     
     // UPDATED: Main timeout logic is now handled inside ensureLoader (15s)
     await ensureLoader();
-
     // Keep the transport + port OPEN here.
     // Closing the port between “Connect” and “Install” can toggle DTR/RTS and reset the board,
     // causing the subsequent flash sync to fail (especially on ESP32-S3 / some host setups).
-
     if (flashBtn) flashBtn.disabled = false;
     const detectedBoardLabel = (selectedValue === "v4") ? "Control Board" : "ESP32 DevKit";
     setProgress(0,
