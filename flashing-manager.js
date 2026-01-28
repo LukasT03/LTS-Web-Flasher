@@ -449,11 +449,15 @@ async function ensureLoader() {
 
   const transport = new TransportCtor(serialPort);
   loaderTransport = transport;
-  
-  // UPDATED: Baudrate lowered to 460800 for robustness (was 921600)
+
+  // Use a fixed, conservative baud rate for classic ESP32 DevKit to avoid packet corruption.
+  const baudCandidates = (selectedValue === "dev")
+    ? [115200]
+    : [460800, 230400, 115200];
+
   espLoader = new LoaderCtor({
     transport,
-    baudrate: 460800, 
+    baudrate: baudCandidates[0],
     terminal: {
       clean() {},
       write() {},
