@@ -17,6 +17,42 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isLikelySerialNoiseError(err) {
+  const msg = String((err && err.message) || err || "");
+  return (
+    /invalid\s+head\s+of\s+packet/i.test(msg) ||
+    /possible\s+serial\s+noise/i.test(msg) ||
+    /corruption/i.test(msg) ||
+    /invalid\s+packet\s+header/i.test(msg)
+  );
+}
+
+async function drainSerialInput(port, drainMs = 250) {
+  // Best-effort: discard any boot logs / garbage so the first SLIP sync bytes
+  // don't get mis-parsed as an "invalid head of packet".
+  if (!port || !port.readable) return;
+  let reader;
+  try {
+    reader = port.readable.getReader();
+  } catch {
+    return;
+  }
+
+  const start = performance.now();
+  try {
+    while (performance.now() - start < drainMs) {
+      // Small timeout per read so we don't block.
+      const res = await withTimeout(reader.read(), 40, null).catch(() => null);
+      if (!res || res.done) break;
+      // Ignore `res.value` on purpose (discard)
+    }
+  } catch {
+    // ignore
+  } finally {
+    try { reader.releaseLock(); } catch {}
+  }
+}
+
 function withTimeout(promise, ms, timeoutError) {
   let t;
   const timeoutPromise = new Promise((_, reject) => {
@@ -447,46 +483,83 @@ async function ensureLoader() {
     throw new Error("Flasher library not loaded");
   }
 
-  const transport = new TransportCtor(serialPort);
-  loaderTransport = transport;
-  
-  // UPDATED: Baudrate lowered to 460800 for robustness (was 921600)
-  espLoader = new LoaderCtor({
-    transport,
-    baudrate: 460800, 
-    terminal: {
-      clean() {},
-      write() {},
-      writeLine() {},
-    },
-  });
-  if (!espLoader.flashSize) {
-    espLoader.flashSize = "4MB";
+  const baudCandidates = [460800, 230400, 115200];
+  let lastErr = null;
+
+  for (let i = 0; i < baudCandidates.length; i++) {
+    const baud = baudCandidates[i];
+
+    const transport = new TransportCtor(serialPort);
+    loaderTransport = transport;
+
+    espLoader = new LoaderCtor({
+      transport,
+      baudrate: baud,
+      terminal: {
+        clean() {},
+        write() {},
+        writeLine() {},
+      },
+    });
+    if (!espLoader.flashSize) {
+      espLoader.flashSize = "4MB";
+    }
+
+    try {
+      // Try to enter a clean state before syncing.
+      // This reduces the likelihood of "Invalid head of packet ... Possible serial noise".
+      try {
+        await hardResetSerial(serialPort);
+        await sleep(120);
+      } catch {}
+
+      await drainSerialInput(serialPort, 250);
+
+      const timeoutErr = new Error("No ESP32 detected (sync timeout)");
+      // Keep the longer timeout to allow manual BOOT press.
+      await withTimeout(espLoader.main(), 15000, timeoutErr);
+
+      // Success
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+      console.error(`Failed to initialise loader @ ${baud} baud`, err);
+
+      // Important on Windows: cancel any pending reads and fully release the port.
+      // Otherwise the promise chain can appear to "hang" on subsequent attempts.
+      try {
+        if (loaderTransport && typeof loaderTransport.disconnect === "function") {
+          await loaderTransport.disconnect();
+        }
+      } catch {}
+
+      try {
+        if (serialPort && (serialPort.readable || serialPort.writable)) {
+          await serialPort.close();
+        }
+      } catch {}
+
+      // Reset globals before next attempt.
+      espLoader = null;
+      loaderTransport = null;
+
+      // Re-open the port for the next attempt.
+      try {
+        if (serialPort && (!serialPort.readable || !serialPort.writable)) {
+          await serialPort.open({ baudRate: 115200 });
+          await sleep(120);
+        }
+      } catch {}
+
+      // Only retry on likely noise/corruption issues; otherwise fail fast.
+      const shouldRetry = isLikelySerialNoiseError(err) || /sync timeout/i.test(String(err && err.message || ""));
+      if (!shouldRetry) break;
+    }
   }
 
-  try {
-    const timeoutErr = new Error("No ESP32 detected (sync timeout)");
-    // UPDATED: Timeout increased to 15000ms (15s) to allow manual BOOT press
-    await withTimeout(espLoader.main(), 15000, timeoutErr);
-  } catch (err) {
-    console.error("Failed to initialise loader", err);
-    // Important on Windows: cancel any pending reads and fully release the port.
-    // Otherwise the promise chain can appear to "hang" on subsequent attempts.
-    try {
-      if (loaderTransport && typeof loaderTransport.disconnect === "function") {
-        await loaderTransport.disconnect();
-      }
-    } catch {}
-    try {
-      if (serialPort && (serialPort.readable || serialPort.writable)) {
-        await serialPort.close();
-      }
-    } catch {}
-
-    espLoader = null;
-    loaderTransport = null;
-
-    throw err;
+  if (!espLoader) {
+    throw lastErr || new Error("Failed to initialise loader");
   }
 
   let chipNameUpper = "";
