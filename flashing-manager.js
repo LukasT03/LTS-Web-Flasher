@@ -287,10 +287,17 @@ function applyGermanTexts() {
 }
 
 function wireStep3DriverHelpLink() {
-  const linkEl = document.getElementById("step3DriverHelpLink");
-  if (!linkEl || linkEl.dataset.wired === "1") return;
-  linkEl.dataset.wired = "1";
-  linkEl.addEventListener("click", (event) => {
+  if (typeof document === "undefined") return;
+  if (document.documentElement.dataset.step3DriverHelpWired === "1") return;
+  document.documentElement.dataset.step3DriverHelpWired = "1";
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    const linkEl =
+      target && typeof target.closest === "function"
+        ? target.closest("#step3DriverHelpLink")
+        : null;
+    if (!linkEl) return;
     event.preventDefault();
     showDriverHelpPopup();
   });

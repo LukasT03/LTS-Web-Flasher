@@ -144,16 +144,17 @@ ol li::before {
   padding-left: 0.5px;
 }
 
-.step-inline-help-link {
-  color: inherit;
+a.step-inline-help-link {
+  color: inherit !important;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
-.step-inline-help-link:visited,
-.step-inline-help-link:hover,
-.step-inline-help-link:active {
-  color: inherit;
+a.step-inline-help-link:visited,
+a.step-inline-help-link:hover,
+a.step-inline-help-link:active,
+a.step-inline-help-link:focus {
+  color: inherit !important;
 }
 
 .step-inline-help-link-tail {
