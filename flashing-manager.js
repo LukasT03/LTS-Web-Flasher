@@ -68,11 +68,18 @@ function isLikelyDriverOrPortIssueMessage(msg) {
   return DRIVER_HELP_TRIGGERS.some((re) => re.test(text));
 }
 
-function buildDriverHelpData() {
-  const title = isGermanRegion ? "Kein ESP32 Chip erkannt!" : "ESP32 not detected!";
-  const body = isGermanRegion
-    ? "Am ausgewählten Port ist kein ESP32-basiertes Board angeschlossen. Es ist möglich, dass der richtige Port wegen fehlender Treiber nicht angezeigt wird. Der korrekte Port würde ungefähr so heißen:"
-    : "No ESP32-based board is connected to the selected port. It’s possible the correct port isn’t showing up because the required drivers are missing. The correct port would be named something like:";
+function buildDriverHelpData(options = {}) {
+  const { fromStepLink = false } = options;
+  const title = fromStepLink
+    ? (isGermanRegion ? "Verbindungshilfe" : "Connection Help")
+    : (isGermanRegion ? "Kein ESP32 Chip erkannt!" : "ESP32 not detected!");
+  const body = fromStepLink
+    ? (isGermanRegion
+      ? "Es ist möglich, dass der richtige Port wegen fehlender Treiber nicht angezeigt wird. Der korrekte Port würde ungefähr so heißen:"
+      : "It’s possible the correct port isn’t showing up because the required drivers are missing. The correct port would be named something like:")
+    : (isGermanRegion
+      ? "Am ausgewählten Port ist kein ESP32-basiertes Board angeschlossen. Es ist möglich, dass der richtige Port wegen fehlender Treiber nicht angezeigt wird. Der korrekte Port würde ungefähr so heißen:"
+      : "No ESP32-based board is connected to the selected port. It’s possible the correct port isn’t showing up because the required drivers are missing. The correct port would be named something like:");
   const portExamples = [
     "CP2102 USB to UART Bridge Controller",
     "USB-SERIAL CH340 (COM3)",
@@ -119,8 +126,8 @@ function markDriverHelpShownThisSession() {
 }
 
 
-function showDriverHelpPopup() {
-  const data = buildDriverHelpData();
+function showDriverHelpPopup(options = {}) {
+  const data = buildDriverHelpData(options);
   if (typeof document === "undefined" || !document.body) {
     return;
   }
@@ -299,7 +306,7 @@ function wireStep3DriverHelpLink() {
         : null;
     if (!linkEl) return;
     event.preventDefault();
-    showDriverHelpPopup();
+    showDriverHelpPopup({ fromStepLink: true });
   });
 }
 
