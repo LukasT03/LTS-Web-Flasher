@@ -97,8 +97,8 @@ function buildDriverHelpData(options = {}) {
   // UPDATED HINT: Added instructions for the BOOT button
   const hint = isGermanRegion
     ?
-    "Tipp: Nutze ein USB-Datenkabel. Falls es trotzdem nicht geht: Halte den BOOT-Button auf dem Board gedrückt, während du 'Verbinden' klickst, und lasse ihn erst los, wenn das Board erkannt wurde."
-    : "Tip: Use a USB data cable. If it still fails: Hold the BOOT button on the board while clicking 'Connect' and only release it once the board is detected.";
+    "Tipp: Nutze ein USB-Datenkabel. Falls es trotzdem nicht geht, halte den BOOT-Button auf dem Board gedrückt, während du 'Verbinden' klickst, und lasse ihn erst los, wenn das Board erkannt wurde."
+    : "Tip: Use a USB data cable. If it still fails, hold the BOOT button on the board while clicking 'Connect' and only release it once the board is detected.";
   return {
     title,
     body,
@@ -277,12 +277,12 @@ function applyGermanTexts() {
   const step2El = document.getElementById("step2");
   const step3El = document.getElementById("step3");
   const step4El = document.getElementById("step4");
-  if (step1El) step1El.textContent = "Schließe dein Board per USB an deinen Computer an";
-  if (step2El) step2El.textContent = "Drücke den Button zum Verbinden und wähle den korrekten COM-Port aus";
+  if (step1El) step1El.textContent = "Schließe dein Board per USB an deinen Computer an.";
+  if (step2El) step2El.textContent = "Drücke den Button zum Verbinden und wähle den korrekten COM-Port aus.";
   if (step3El) {
-    step3El.innerHTML = "Wähle deine Respooler-Variante im Menü aus <a id=\"step3DriverHelpLink\" class=\"step-inline-help-link\" href=\"#\">Wird nicht <span class=\"step-inline-help-link-tail\">angezeigt<span class=\"step-inline-help-link-q\">?</span></span></a>";
+    step3El.innerHTML = "Wähle deine Respooler-Variante im Menü aus. <a id=\"step3DriverHelpLink\" class=\"step-inline-help-link\" href=\"#\">Wird nicht <span class=\"step-inline-help-link-tail\">angezeigt<span class=\"step-inline-help-link-q\">?</span></span></a>";
   }
-  if (step4El) step4El.textContent = "Installiere die Firmware über den Button";
+  if (step4El) step4El.textContent = "Installiere die Firmware über den Button.";
   const fwLabelEl = document.getElementById("fwLabel");
   if (fwLabelEl) fwLabelEl.textContent = "Aktuelle Firmware:";
 
