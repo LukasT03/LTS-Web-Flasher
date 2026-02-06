@@ -272,7 +272,9 @@ function applyGermanTexts() {
   const step4El = document.getElementById("step4");
   if (step1El) step1El.textContent = "Schließe dein Board per USB an deinen Computer an";
   if (step2El) step2El.textContent = "Drücke den Button zum Verbinden und wähle den korrekten COM-Port aus";
-  if (step3El) step3El.textContent = "Wähle deine Respooler-Variante im Menü aus";
+  if (step3El) {
+    step3El.innerHTML = "Wähle deine Respooler-Variante im Menü aus <a id=\"step3DriverHelpLink\" class=\"step-inline-help-link\" href=\"#\">Wird nicht <span class=\"step-inline-help-link-tail\">angezeigt<span class=\"step-inline-help-link-q\">?</span></span></a>";
+  }
   if (step4El) step4El.textContent = "Installiere die Firmware über den Button";
   const fwLabelEl = document.getElementById("fwLabel");
   if (fwLabelEl) fwLabelEl.textContent = "Aktuelle Firmware:";
@@ -284,9 +286,20 @@ function applyGermanTexts() {
 
 }
 
+function wireStep3DriverHelpLink() {
+  const linkEl = document.getElementById("step3DriverHelpLink");
+  if (!linkEl || linkEl.dataset.wired === "1") return;
+  linkEl.dataset.wired = "1";
+  linkEl.addEventListener("click", (event) => {
+    event.preventDefault();
+    showDriverHelpPopup();
+  });
+}
+
 if (isGermanRegion) {
   applyGermanTexts();
 }
+wireStep3DriverHelpLink();
 
 const supportsWebSerial =
   typeof navigator !== "undefined" && "serial" in navigator;

@@ -144,6 +144,27 @@ ol li::before {
   padding-left: 0.5px;
 }
 
+.step-inline-help-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.step-inline-help-link:visited,
+.step-inline-help-link:hover,
+.step-inline-help-link:active {
+  color: inherit;
+}
+
+.step-inline-help-link-tail {
+  white-space: nowrap;
+}
+
+.step-inline-help-link-q {
+  text-decoration: underline;
+  display: inline-block;
+}
+
 .lts-btn {
   padding: 0.85rem 1.5rem;
   border-radius: 14px;
