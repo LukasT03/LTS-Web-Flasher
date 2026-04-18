@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LTS Web Flasher</title>
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" href="/LogoFavicon.png" />
+
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    @media (max-width: 450px) {
+      #browserNotSupportedOverlay .not-sup-desc {
+        font-size: 1.15rem !important;
+      }
+      #browserNotSupportedOverlay .not-sup-actions {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        width: max-content !important;
+        max-width: 100% !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+      }
+      #browserNotSupportedOverlay .not-sup-actions > a,
+      #browserNotSupportedOverlay .not-sup-actions > button {
+        width: 100% !important;
+      }
+      /* On narrow screens: hide the download button */
+      #notSupDownloadBtn {
+        display: none !important;
+      }
+      /* On narrow screens: show Download button first, then Have A Look */
+      #browserNotSupportedOverlay .not-sup-actions > a {
+        order: 1;
+      }
+      #browserNotSupportedOverlay .not-sup-actions > button {
+        order: 2;
+      }
+      /* On narrow screens: show only "Not Supported" */
+      #browserNotSupportedOverlay .not-sup-title-browser {
+        display: none;
+      }
+      #browserNotSupportedOverlay .not-sup-title-main {
+        display: inline;
+      }
+    }
+  </style>
+
+</head>
+<body>
+  <div id="pageRoot" style="position:relative;">
+    <div id="pageFadeOverlay" style="position:fixed; inset:0; background:rgb(var(--bg)); z-index:9999; opacity:1; transition:opacity 0.35s ease-out;"></div>
+    <div id="browserNotSupportedOverlay" style="position:fixed; inset:0; background:rgb(var(--bg) / 0.96); z-index:9998; display:none; opacity:1; transition:opacity 0.35s ease-out; flex-direction:column; align-items:center; justify-content:flex-start; text-align:center; box-sizing:border-box; padding:18px 35px 28px 35px; overflow:auto; -webkit-overflow-scrolling:touch;">
+      <div style="max-width:560px; width:100%; margin-top:auto; margin-bottom:auto;">
+        <img src="Logo.png" alt="Not supported" style="width:86px; height:86px; margin:0 auto 22px auto; display:block;" />
+        <h1 style="margin:0 0 12px 0;"><span id="notSupTitleBrowser" class="not-sup-title-browser">Browser</span> <span id="notSupTitleMain" class="not-sup-title-main">Not Supported</span></h1>
+        <div id="notSupDesc" class="not-sup-desc" style="font-size:1.2rem; line-height:1.35; color:rgb(var(--text)); opacity:0.65; max-width:480px; margin:0 auto;">
+          To flash the firmware, use a compatible browser like Chrome or Edge on desktop. On macOS you can download the LTS Utility program.
+        </div>
+        <div class="not-sup-actions" style="display:flex; flex-direction:row; gap:12px; margin-top:22px; align-items:center; justify-content:center; width:100%; flex-wrap:wrap;">
+          <button id="notSupHaveLookBtn" class="lts-btn" type="button" style="width:auto; padding:10px 20px; height:auto; min-height:0; line-height:1.2; font-weight:600;">Have A Look</button>
+          <a id="notSupDownloadBtn" class="lts-btn" href="https://respooler.lts-design.com/Apps/LTS-Utility.zip" target="_blank" rel="noopener" style="width:auto; padding:10px 20px; height:auto; min-height:0; line-height:1.2; font-weight:600; text-decoration:none; background:#0E7AFE; border-color:#0E7AFE; color:#fff;">Download LTS Utility</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="header">
+      <div class="header-logo">
+        <img src="Logo.png" alt="LTS Logo" />
+      </div>
+      <div class="header-text">
+        <h1 id="pageTitle">Web Flasher</h1>
+        <div id="fwVersion" class="fw-version">
+          <span id="fwLabel">Current firmware:</span> <span id="fwVersionValue">0.0.0</span>
+        </div>
+      </div>
+    </div>
+
+  <div class="flasher-card">
+
+    <ol>
+      <li id="step1">Connect your board to your computer via USB.</li>
+      <li id="step2">Click the connect button and choose the correct COM port. <a id="stepDriverHelpLink" class="step-inline-help-link" href="#">Not showing <span class="step-inline-help-link-tail">up<span class="step-inline-help-link-q">?</span></span></a></li>
+      <li id="step3">Select your respooler variant from the menu.</li>
+      <li id="step4">Press Flash to install the firmware.</li>
+    </ol>
+    <hr class="section-divider">
+
+    <div class="connect-row">
+      <button type="button" class="lts-btn" id="connectBtn">Connect Board</button>
+    </div>
+
+    <div id="variantSegment" class="segmented">
+      <div class="seg-indicator"></div>
+      <button class="seg-btn is-selected" data-value="v4">Respooler V4</button>
+      <button class="seg-btn" data-value="pro">Respooler Pro</button>
+    </div>
+
+
+  </div>
+
+    <div class="flasher-card progress-card">
+
+    <div class="flash-row">
+      <div class="flash-col-button">
+        <button type="button" class="lts-btn" id="flashBtn" disabled>Flash</button>
+      </div>
+      <div class="flash-divider" aria-hidden="true"></div>
+      <div class="flash-col-progress">
+        <div id="progressWrapper" class="progress-wrapper">
+          <div class="progress-header">
+            <div id="progressLabel" class="progress-label">Ready for connection</div>
+            <div id="progressPercent" class="progress-percent">0%</div>
+          </div>
+          <div class="progress-track">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+
+  <script>
+    window.addEventListener("load", () => {
+      // Show a blocking overlay when the browser cannot use WebSerial.
+      try {
+        const notSup = document.getElementById("browserNotSupportedOverlay");
+        const haveLook = document.getElementById("notSupHaveLookBtn");
+        const titleBrowser = document.getElementById("notSupTitleBrowser");
+        const titleMain = document.getElementById("notSupTitleMain");
+        const desc = document.getElementById("notSupDesc");
+        const dl = document.getElementById("notSupDownloadBtn");
+
+        const lang = String(navigator.language || navigator.userLanguage || "").toLowerCase();
+        const isGerman = lang.startsWith("de");
+
+        if (isGerman) {
+          const isNarrow = !!(window.matchMedia && window.matchMedia('(max-width: 450px)').matches);
+
+          if (titleBrowser) titleBrowser.textContent = "Browser";
+          // Desktop: “Browser nicht unterstützt” (lowercase n). Narrow screens show only the main title -> “Nicht unterstützt”.
+          if (titleMain) titleMain.textContent = isNarrow ? "Nicht unterstützt" : "nicht unterstützt";
+          if (desc) desc.textContent = "Um die Firmware zu installieren, verwende einen kompatiblen Browser wie Chrome oder Edge auf einem Desktop Computer. Für macOS gibt es auch das LTS Utility Programm.";
+          if (haveLook) haveLook.textContent = "Trotzdem öffnen";
+          if (dl) dl.textContent = "LTS Utility herunterladen";
+        }
+        const setNoScroll = (on) => {
+          try {
+            // Simple: lock the page behind the overlay; the overlay itself can still scroll.
+            document.documentElement.style.overflow = on ? 'hidden' : '';
+            document.body.style.overflow = on ? 'hidden' : '';
+          } catch (_) {}
+        };
+
+        if (haveLook && notSup) {
+          haveLook.addEventListener('click', () => {
+            // Same behavior as the initial fade overlay: fade out, then remove.
+            notSup.style.opacity = '0';
+            setTimeout(() => {
+              try { notSup.remove(); } catch (_) { notSup.style.display = 'none'; }
+              // Allow scrolling again once the overlay is dismissed.
+              setNoScroll(false);
+            }, 350);
+          });
+        }
+
+        const hasWebSerial = ("serial" in navigator) && !!navigator.serial && (typeof navigator.serial.requestPort === "function");
+        const isSecure = !!window.isSecureContext;
+        if (notSup && (!hasWebSerial || !isSecure)) {
+          setNoScroll(true);
+          notSup.style.display = "flex";
+          notSup.style.opacity = "1";
+        }
+      } catch (_) {}
+
+      const ov = document.getElementById("pageFadeOverlay");
+      if (ov) {
+        setTimeout(() => {
+          ov.style.opacity = "0";
+          setTimeout(() => ov.remove(), 1000);
+        }, 350);
+      }
+    });
+  </script>
+  <script type="module" src="flashing-manager.js"></script>
+
+  <footer class="page-footer">
+    Powered by <a href="https://esphome.github.io/esp-web-tools/" target="_blank">ESP Web Tools</a>
+    <div class="page-footer-links">
+      <a class="footer-link github-link" href="https://github.com/LukasT03" target="_blank">GitHub</a>
+      <a class="footer-link" href="https://lts-design.com" target="_blank">lts-design.com</a>
+    </div>
+  </footer>
+  </div>
+
+  <!-- Driver help modal (shown when no ESP32 is detected / likely missing drivers) -->
+  <div id="driverHelpModal" class="modal-backdrop" hidden>
+    <div class="modal" role="document">
+      <button type="button" class="icon-btn modal-close" aria-label="Close">
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+
+      <div class="modal-header">
+        <h2 id="driverHelpTitle" class="modal-title">ESP32 not detected</h2>
+      </div>
+
+      <p id="driverHelpBody" class="modal-desc"></p>
+
+      <ul id="driverHelpPorts" class="driver-help-port-list"></ul>
+
+      <hr class="section-divider">
+
+      <div id="driverHelpLinksTitle" class="driver-help-links-title"></div>
+      <div id="driverHelpLinks" class="driver-help-links"></div>
+
+      <p id="driverHelpHint" class="modal-desc driver-help-hint"></p>
+
+    </div>
+  </div>
+
+</body>
+</html>
